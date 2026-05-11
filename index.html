@@ -333,10 +333,10 @@
             else if (level === 11) { targetCount = 5; bombCount = 2; speedSetting = 2; teleport = true; }
             else if (level === 12) { targetCount = 5; bombCount = 3; speedSetting = 2; teleport = true; }
             else if (level === 13) { targetCount = 5; bombCount = 4; speedSetting = 2; teleport = true; }
-            else if (level === 14) { 
+            else if (level === 14) {
                 // 보너스 스테이지 1
-                targetCount = 100; bombCount = 0; speedSetting = 0; teleport = true; 
-                isBonus = true; timeLimit = 5000; pointPerClick = 20; 
+                targetCount = 100; bombCount = 0; speedSetting = 0; teleport = true;
+                isBonus = true; timeLimit = 5000; pointPerClick = 2;
             }
             else if (level === 15) { targetCount = 5; bombCount = 5; speedSetting = 3; teleport = true; } // 사용자 14단계
             else if (level === 16) { targetCount = 4; bombCount = 6; speedSetting = 3; teleport = true; } // 사용자 15단계
@@ -347,12 +347,12 @@
             else if (level === 21) { targetCount = 2; bombCount = 8; speedSetting = 3; } // 사용자 20단계
             else if (level === 22) {
                 // 보너스 스테이지 2
-                targetCount = 30; bombCount = 5; speedSetting = 1; 
-                isBonus = true; timeLimit = 5000; pointPerClick = 30; 
+                targetCount = 30; bombCount = 5; speedSetting = 1;
+                isBonus = true; timeLimit = 5000; pointPerClick = 3;
             }
-            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 5; teleport = true; } // 사용자 21단계 (최종)
+            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 4; teleport = true; } // 사용자 21단계 (최종)
             else {
-                targetCount = 5; bombCount = 20; speedSetting = 6; teleport = true;
+                targetCount = 5; bombCount = 20; speedSetting = 5; teleport = true;
             }
 
             const options = [];
@@ -617,12 +617,12 @@
 
             // 버튼 움직임 시작
             if (moveInterval) clearInterval(moveInterval);
-            
+
             // Speed 1: 1000ms, Speed 2: 500ms, Speed 3: 300ms, Speed 5: 150ms
-            const speed = currentQuestion.speedSetting === 2 ? 500 : 
-                          currentQuestion.speedSetting === 3 ? 300 :
-                          currentQuestion.speedSetting === 5 ? 150 : 1000;
-            
+            const speed = currentQuestion.speedSetting === 2 ? 500 :
+                currentQuestion.speedSetting === 3 ? 300 :
+                    currentQuestion.speedSetting === 5 ? 150 : 1000;
+
             // 이동 속도에 맞춰 CSS 트랜지션 시간 조정 (이동 시간의 70% 정도로 설정하여 부드럽게)
             const moveArea = document.querySelector('.random-area');
             if (moveArea) {
@@ -673,7 +673,7 @@
 
             // 타겟 버튼 처리
             btn.style.visibility = 'hidden';
-            
+
             if (q.isBonus) {
                 // 보너스 스테이지는 즉시 점수 추가
                 totalScore += q.pointPerClick;
@@ -702,10 +702,10 @@
         function handleSuccess(timeTaken) {
             gameState = 'result';
             if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
-            
+
             const q = currentQuestion;
             let resultHtml = "";
-            
+
             if (q.isBonus) {
                 const clickedCount = q.options.filter(o => o.type === 'target').length - q.remainingTargets;
                 resultHtml = `
@@ -722,10 +722,10 @@
                 else if (seconds < 5) bonus = 1.5;
                 else if (seconds < 10) bonus = 1;
                 else bonus = 0.5;
-                
+
                 const stageScore = q.options.filter(o => o.type === 'target').length * bonus;
                 totalScore += stageScore;
-                
+
                 resultHtml = `
                     <h2>Level ${currentLevel} 클리어!</h2>
                     <p style="font-size:1.2rem;">소요 시간: <b>${formatTime(timeTaken)}</b></p>

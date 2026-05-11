@@ -248,13 +248,13 @@
         let globalRankings = [];
         let fullRankings = [];
         let lastPlayedDate = null;
-        let gameState = 'home'; 
+        let gameState = 'home';
         let currentLevel = 1;
         let totalScore = 0;
         let totalTime = 0;
         let stageStartTime = 0;
         let readyTimer = null;
-        let currentQuestion = null; 
+        let currentQuestion = null;
         let moveInterval = null;
 
         // 레벨 생성 로직
@@ -280,9 +280,9 @@
             else if (level === 11) { targetCount = 5; bombCount = 2; speedSetting = 2; teleport = true; }
             else if (level === 12) { targetCount = 5; bombCount = 3; speedSetting = 2; teleport = true; }
             else if (level === 13) { targetCount = 5; bombCount = 4; speedSetting = 2; teleport = true; }
-            else if (level === 14) { 
-                targetCount = 100; bombCount = 0; speedSetting = 0; teleport = true; 
-                isBonus = true; timeLimit = 5000; pointPerClick = 20; 
+            else if (level === 14) {
+                targetCount = 100; bombCount = 0; speedSetting = 0; teleport = true;
+                isBonus = true; timeLimit = 5000; pointPerClick = 2;
             }
             else if (level === 15) { targetCount = 5; bombCount = 5; speedSetting = 3; teleport = true; }
             else if (level === 16) { targetCount = 4; bombCount = 6; speedSetting = 3; teleport = true; }
@@ -292,14 +292,14 @@
             else if (level === 20) { targetCount = 3; bombCount = 7; speedSetting = 3; }
             else if (level === 21) { targetCount = 2; bombCount = 8; speedSetting = 3; }
             else if (level === 22) {
-                targetCount = 30; bombCount = 5; speedSetting = 1; 
-                isBonus = true; timeLimit = 5000; pointPerClick = 30; 
+                targetCount = 30; bombCount = 5; speedSetting = 1;
+                isBonus = true; timeLimit = 5000; pointPerClick = 3;
             }
-            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 5; teleport = true; }
+            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 4; teleport = true; }
             else {
-                targetCount = 5; bombCount = 20; speedSetting = 6; teleport = true;
+                targetCount = 5; bombCount = 20; speedSetting = 5; teleport = true;
             }
-            
+
             const options = [];
             for (let i = 0; i < targetCount; i++) {
                 options.push({ type: 'target', label: '클릭!' });
@@ -307,7 +307,7 @@
             for (let i = 0; i < bombCount; i++) {
                 options.push({ type: 'bomb', label: '꽝' });
             }
-            
+
             return {
                 options: options.sort(() => Math.random() - 0.5),
                 remainingTargets: targetCount,
@@ -429,16 +429,16 @@
             renderQuestion();
             stageStartTime = performance.now();
             if (moveInterval) clearInterval(moveInterval);
-            
-            const speed = currentQuestion.speedSetting === 2 ? 500 : 
-                          currentQuestion.speedSetting === 3 ? 300 :
-                          currentQuestion.speedSetting === 5 ? 150 : 1000;
-            
+
+            const speed = currentQuestion.speedSetting === 2 ? 500 :
+                currentQuestion.speedSetting === 3 ? 300 :
+                    currentQuestion.speedSetting === 5 ? 150 : 1000;
+
             const moveArea = document.querySelector('.random-area');
             if (moveArea) {
                 moveArea.style.setProperty('--move-speed', (speed * 0.7) / 1000 + 's');
             }
-            
+
             moveInterval = setInterval(moveButtons, speed);
             if (currentQuestion.isBonus) {
                 setTimeout(() => { if (gameState === 'playing') handleSuccess(currentQuestion.timeLimit); }, currentQuestion.timeLimit);
@@ -510,4 +510,5 @@
         init();
     </script>
 </body>
+
 </html>
