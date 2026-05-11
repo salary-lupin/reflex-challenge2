@@ -118,7 +118,7 @@
             border-radius: 12px;
             background: #fff;
             cursor: pointer;
-            transition: top 0.5s ease-in-out, left 0.5s ease-in-out, transform 0.1s;
+            transition: top var(--move-speed, 0.5s) ease-in-out, left var(--move-speed, 0.5s) ease-in-out, transform 0.1s;
             color: #2c3e50;
             word-break: keep-all;
         }
@@ -295,7 +295,7 @@
                 targetCount = 30; bombCount = 5; speedSetting = 1; 
                 isBonus = true; timeLimit = 5000; pointPerClick = 30; 
             }
-            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 5; }
+            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 5; teleport = true; }
             else {
                 targetCount = 5; bombCount = 20; speedSetting = 6; teleport = true;
             }
@@ -429,13 +429,17 @@
             renderQuestion();
             stageStartTime = performance.now();
             if (moveInterval) clearInterval(moveInterval);
-            if (currentQuestion.speedSetting > 0) {
-                let speed = 1000;
-                if (currentQuestion.speedSetting === 2) speed = 500;
-                else if (currentQuestion.speedSetting === 3) speed = 300;
-                else if (currentQuestion.speedSetting === 5) speed = 150;
-                moveInterval = setInterval(moveButtons, speed);
+            
+            const speed = currentQuestion.speedSetting === 2 ? 500 : 
+                          currentQuestion.speedSetting === 3 ? 300 :
+                          currentQuestion.speedSetting === 5 ? 150 : 1000;
+            
+            const moveArea = document.querySelector('.random-area');
+            if (moveArea) {
+                moveArea.style.setProperty('--move-speed', (speed * 0.7) / 1000 + 's');
             }
+            
+            moveInterval = setInterval(moveButtons, speed);
             if (currentQuestion.isBonus) {
                 setTimeout(() => { if (gameState === 'playing') handleSuccess(currentQuestion.timeLimit); }, currentQuestion.timeLimit);
             }
