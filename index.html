@@ -118,7 +118,7 @@
             border-radius: 12px;
             background: #fff;
             cursor: pointer;
-            transition: all 0.1s;
+            transition: top 0.5s ease-in-out, left 0.5s ease-in-out, transform 0.1s;
             color: #2c3e50;
             word-break: keep-all;
         }
@@ -291,6 +291,7 @@
         let stageStartTime = 0;
         let readyTimer = null;
         let currentQuestion = null; // level data
+        let moveInterval = null;
 
         const timeLimitPerLevel = 30000; // 기본 레벨당 30초 (넉넉하게)
 
@@ -311,8 +312,12 @@
 
         // 레벨 생성 로직
         function generateLevel(level) {
-            const targetCount = 3 + Math.floor(level / 2); // 레벨당 버튼 수 증가
-            const bombCount = Math.min(Math.floor(level / 3), 10); // 레벨당 꽝 버튼 추가 (최대 10개)
+            // 레벨 1: 5개 클릭, 1개 꽝
+            // 레벨 2~6: 단계적으로 클릭 숫자 1개씩 증가 (6단계에 10개)
+            const targetCount = 4 + Math.min(level, 6) + (level > 6 ? level - 6 : 0); 
+            // Level 1: 4+1=5, Level 2: 4+2=6, ..., Level 6: 4+6=10
+            
+            const bombCount = Math.min(Math.floor(level / 2) + 1, 10); // 꽝 버튼도 조금씩 증가
             
             const options = [];
             for (let i = 0; i < targetCount; i++) {
@@ -545,6 +550,30 @@
             currentQuestion = generateLevel(currentLevel);
             renderQuestion();
             stageStartTime = performance.now();
+
+            // 버튼 움직임 시작
+            if (moveInterval) clearInterval(moveInterval);
+            
+            // 레벨 1은 천천히 (800ms), 레벨이 올라갈수록 빨라짐 (최소 300ms)
+            const speed = Math.max(800 - (currentLevel * 50), 300);
+            moveInterval = setInterval(moveButtons, speed);
+        }
+
+        function moveButtons() {
+            if (gameState !== 'playing') {
+                if (moveInterval) clearInterval(moveInterval);
+                return;
+            }
+            const q = currentQuestion;
+            q.options.forEach((opt, idx) => {
+                const btn = document.getElementById(`btn-${idx}`);
+                if (btn && btn.style.visibility !== 'hidden') {
+                    const top = Math.random() * 85;
+                    const left = Math.random() * 85;
+                    btn.style.top = top + '%';
+                    btn.style.left = left + '%';
+                }
+            });
         }
 
         // 정답 처리 로직
@@ -582,12 +611,13 @@
             gameState = 'result';
             totalTime += timeTaken;
             
-            // 점수 계산 로직
+            // 점수 계산 로직 (수정된 난이도)
             let bonus = 0.5;
             const seconds = timeTaken / 1000;
-            if (seconds < 10) bonus = 2;
-            else if (seconds < 15) bonus = 1.5;
-            else if (seconds < 20) bonus = 1;
+            if (seconds < 3) bonus = 2;
+            else if (seconds < 5) bonus = 1.5;
+            else if (seconds < 10) bonus = 1;
+            else bonus = 0.5;
             
             const stageScore = currentQuestion.options.filter(o => o.type === 'target').length * bonus;
             totalScore += stageScore;
@@ -609,6 +639,7 @@
 
         function handleFail(reason) {
             gameState = 'result';
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
             document.getElementById('app').innerHTML = `
         <div class="result-screen fail">
             <h2 style="font-size: 3rem;">게임 종료</h2>
