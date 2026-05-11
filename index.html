@@ -316,6 +316,9 @@
             let bombCount = 1;
             let speedSetting = 1;
             let teleport = false;
+            let isBonus = false;
+            let timeLimit = 0;
+            let pointPerClick = 0;
 
             if (level === 1) { targetCount = 5; bombCount = 0; speedSetting = 1; }
             else if (level === 2) { targetCount = 6; bombCount = 1; speedSetting = 1; }
@@ -328,16 +331,30 @@
             else if (level === 9) { targetCount = 9; bombCount = 2; speedSetting = 2; }
             else if (level === 10) { targetCount = 10; bombCount = 2; speedSetting = 2; }
             else if (level === 11) { targetCount = 5; bombCount = 2; speedSetting = 2; teleport = true; }
-            else if (level === 12) { targetCount = 6; bombCount = 2; speedSetting = 2; teleport = true; }
-            else if (level === 13) { targetCount = 7; bombCount = 2; speedSetting = 2; teleport = true; }
-            else {
-                // 13단계 이후는 자동 스케일링
-                targetCount = 7 + (level - 13);
-                bombCount = 3;
-                speedSetting = 2;
-                teleport = true;
+            else if (level === 12) { targetCount = 5; bombCount = 3; speedSetting = 2; teleport = true; }
+            else if (level === 13) { targetCount = 5; bombCount = 4; speedSetting = 2; teleport = true; }
+            else if (level === 14) { 
+                // 보너스 스테이지 1
+                targetCount = 100; bombCount = 0; speedSetting = 0; teleport = true; 
+                isBonus = true; timeLimit = 5000; pointPerClick = 20; 
             }
-            
+            else if (level === 15) { targetCount = 5; bombCount = 5; speedSetting = 3; teleport = true; } // 사용자 14단계
+            else if (level === 16) { targetCount = 4; bombCount = 6; speedSetting = 3; teleport = true; } // 사용자 15단계
+            else if (level === 17) { targetCount = 3; bombCount = 7; speedSetting = 3; teleport = true; } // 사용자 16단계
+            else if (level === 18) { targetCount = 5; bombCount = 5; speedSetting = 3; } // 사용자 17단계
+            else if (level === 19) { targetCount = 4; bombCount = 6; speedSetting = 3; } // 사용자 18단계
+            else if (level === 20) { targetCount = 3; bombCount = 7; speedSetting = 3; } // 사용자 19단계
+            else if (level === 21) { targetCount = 2; bombCount = 8; speedSetting = 3; } // 사용자 20단계
+            else if (level === 22) {
+                // 보너스 스테이지 2
+                targetCount = 30; bombCount = 5; speedSetting = 1; 
+                isBonus = true; timeLimit = 5000; pointPerClick = 30; 
+            }
+            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 5; } // 사용자 21단계 (최종)
+            else {
+                targetCount = 5; bombCount = 20; speedSetting = 6; teleport = true;
+            }
+
             const options = [];
             for (let i = 0; i < targetCount; i++) {
                 options.push({ type: 'target', label: '클릭!' });
@@ -345,12 +362,15 @@
             for (let i = 0; i < bombCount; i++) {
                 options.push({ type: 'bomb', label: '꽝' });
             }
-            
+
             return {
                 options: options.sort(() => Math.random() - 0.5),
                 remainingTargets: targetCount,
                 speedSetting: speedSetting,
-                teleport: teleport
+                teleport: teleport,
+                isBonus: isBonus,
+                timeLimit: timeLimit,
+                pointPerClick: pointPerClick
             };
         }
 
@@ -374,7 +394,7 @@
                         rankings.push(data[key]);
                     }
                 }
-                
+
                 // 점수가 높은 순으로 정렬 (내림차순), 점수가 같으면 시간 적은 순 (오름차순)
                 rankings.sort((a, b) => {
                     if ((b.score || 0) !== (a.score || 0)) {
@@ -511,18 +531,33 @@
 
         function renderStageIntro() {
             gameState = 'intro';
+            let introTitle = `Level ${currentLevel}`;
             let introText = "준비되셨나요?";
+            let subDesc = `모든 <b>클릭!</b> 버튼을 빠르게 누르세요.<br><b>꽝</b> 버튼을 누르면 즉시 종료됩니다!`;
+
             if (currentLevel === 5) introText = "이제 몸 다 풀리셨나요?";
             else if (currentLevel === 8) introText = "아직 할만한가요?";
             else if (currentLevel === 11) introText = "여기까지 오다니 대단하군요! 안되겠어요.";
+            else if (currentLevel === 14) {
+                introTitle = "BONUS STAGE 1";
+                introText = "5초동안 최대한 많은 클릭을 없애세요!";
+                subDesc = "클릭 1개당 <b>20점</b> (움직이지 않음)";
+            }
+            else if (currentLevel === 15) introText = "잘 쉬셨죠? 다시 갑니다.";
+            else if (currentLevel === 18) introText = "이제 저도 못참습니다!";
+            else if (currentLevel === 22) {
+                introTitle = "BONUS STAGE 2";
+                introText = "5초동안 최대한 많은 클릭을 없애세요!";
+                subDesc = "클릭 1개당 <b>30점</b> (느리게 움직임)";
+            }
+            else if (currentLevel === 23) introText = "이제 최종장입니다! 이걸 클리어하면 인정하죠!";
 
             document.getElementById('app').innerHTML = `
         <div class="intro-screen">
-            <h2 style="font-size: 2.5rem; color: #2c3e50;">Level ${currentLevel}</h2>
+            <h2 style="font-size: 2.5rem; color: #2c3e50;">${introTitle}</h2>
             <p style="color:#7f8c8d; font-size: 1.2rem;">${introText}</p>
             <div class="example-box">
-                모든 <b>클릭!</b> 버튼을 빠르게 누르세요.<br>
-                <b>꽝</b> 버튼을 누르면 즉시 종료됩니다!
+                ${subDesc}
             </div>
             <button class="primary-btn ready-btn" onclick="prepareStage(event)">시작하기</button>
         </div>
@@ -565,7 +600,9 @@
                 const isBomb = opt.type === 'bomb';
                 const className = isBomb ? 'opt-btn bomb-btn' : 'opt-btn';
                 const teleportStyle = q.teleport ? 'transition: none;' : '';
-                html += `<button id="btn-${idx}" class="${className}" style="position:absolute; top:${top}%; left:${left}%; padding:10px 15px; font-size:1rem; white-space:nowrap; z-index:10; ${teleportStyle}" onmousedown="handleAnswer(${idx}, event, this)">${opt.label}</button>`;
+                // 보너스 스테이지 1은 버튼 크기를 줄여서 많이 배치 가능하게 함
+                const bonusStyle = (currentLevel === 14) ? 'padding: 5px 8px; font-size: 0.7rem;' : '';
+                html += `<button id="btn-${idx}" class="${className}" style="position:absolute; top:${top}%; left:${left}%; padding:10px 15px; font-size:1rem; white-space:nowrap; z-index:10; ${teleportStyle} ${bonusStyle}" onmousedown="handleAnswer(${idx}, event, this)">${opt.label}</button>`;
             });
 
             html += `</div>`;
@@ -581,9 +618,24 @@
             // 버튼 움직임 시작
             if (moveInterval) clearInterval(moveInterval);
             
-            // Speed 1: 1000ms, Speed 2: 500ms (또는 레벨에 따라 조정 가능)
-            const speed = currentQuestion.speedSetting === 1 ? 1000 : 500;
-            moveInterval = setInterval(moveButtons, speed);
+            if (currentQuestion.speedSetting > 0) {
+                // Speed 1: 1000ms, Speed 2: 500ms, Speed 3: 300ms, Speed 5: 150ms
+                let speed = 1000;
+                if (currentQuestion.speedSetting === 2) speed = 500;
+                else if (currentQuestion.speedSetting === 3) speed = 300;
+                else if (currentQuestion.speedSetting === 5) speed = 150;
+                
+                moveInterval = setInterval(moveButtons, speed);
+            }
+
+            // 보너스 스테이지 시간 제한
+            if (currentQuestion.isBonus) {
+                setTimeout(() => {
+                    if (gameState === 'playing') {
+                        handleSuccess(currentQuestion.timeLimit);
+                    }
+                }, currentQuestion.timeLimit);
+            }
         }
 
         function moveButtons() {
@@ -618,12 +670,22 @@
 
             // 타겟 버튼 처리
             btn.style.visibility = 'hidden';
-            q.remainingTargets--;
-            document.getElementById('remainingCount').innerText = q.remainingTargets;
+            
+            if (q.isBonus) {
+                // 보너스 스테이지는 즉시 점수 추가
+                totalScore += q.pointPerClick;
+                // 남은 개수 표시는 줄여줌 (장식용)
+                q.remainingTargets--;
+                const counter = document.getElementById('remainingCount');
+                if (counter) counter.innerText = q.remainingTargets;
+            } else {
+                q.remainingTargets--;
+                document.getElementById('remainingCount').innerText = q.remainingTargets;
 
-            if (q.remainingTargets === 0) {
-                const timeTaken = performance.now() - stageStartTime;
-                handleSuccess(timeTaken);
+                if (q.remainingTargets === 0) {
+                    const timeTaken = performance.now() - stageStartTime;
+                    handleSuccess(timeTaken);
+                }
             }
         }
 
@@ -636,32 +698,63 @@
         // 결과 처리
         function handleSuccess(timeTaken) {
             gameState = 'result';
-            totalTime += timeTaken;
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
             
-            // 점수 계산 로직 (수정된 난이도)
-            let bonus = 0.5;
-            const seconds = timeTaken / 1000;
-            if (seconds < 3) bonus = 2;
-            else if (seconds < 5) bonus = 1.5;
-            else if (seconds < 10) bonus = 1;
-            else bonus = 0.5;
+            const q = currentQuestion;
+            let resultHtml = "";
             
-            const stageScore = currentQuestion.options.filter(o => o.type === 'target').length * bonus;
-            totalScore += stageScore;
+            if (q.isBonus) {
+                const clickedCount = q.options.filter(o => o.type === 'target').length - q.remainingTargets;
+                resultHtml = `
+                    <h2>보너스 스테이지 종료!</h2>
+                    <p style="font-size:1.2rem;">클릭 개수: <b>${clickedCount}개</b></p>
+                    <p style="font-size:1.5rem; font-weight:bold; color:#f1c40f;">+${(clickedCount * q.pointPerClick).toFixed(1)}점</p>
+                    <p style="font-size:1.3rem; margin-top:10px; color:#34495e;">누적 점수: <b>${totalScore.toFixed(1)}점</b></p>
+                `;
+            } else {
+                totalTime += timeTaken;
+                let bonus = 0.5;
+                const seconds = timeTaken / 1000;
+                if (seconds < 3) bonus = 2;
+                else if (seconds < 5) bonus = 1.5;
+                else if (seconds < 10) bonus = 1;
+                else bonus = 0.5;
+                
+                const stageScore = q.options.filter(o => o.type === 'target').length * bonus;
+                totalScore += stageScore;
+                
+                resultHtml = `
+                    <h2>Level ${currentLevel} 클리어!</h2>
+                    <p style="font-size:1.2rem;">소요 시간: <b>${formatTime(timeTaken)}</b></p>
+                    <p style="font-size:1.2rem;">보너스: <b>x${bonus}</b></p>
+                    <p style="font-size:1.5rem; font-weight:bold; color:#27ae60;">+${stageScore.toFixed(1)}점</p>
+                    <p style="font-size:1.3rem; margin-top:10px; color:#34495e;">누적 점수: <b>${totalScore.toFixed(1)}점</b></p>
+                `;
+            }
 
-            document.getElementById('app').innerHTML = `
-        <div class="result-screen success">
-            <h2>Level ${currentLevel} 클리어!</h2>
-            <p style="font-size:1.2rem;">소요 시간: <b>${formatTime(timeTaken)}</b></p>
-            <p style="font-size:1.2rem;">보너스: <b>x${bonus}</b></p>
-            <p style="font-size:1.5rem; font-weight:bold; color:#27ae60;">+${stageScore.toFixed(1)}점</p>
-            <p style="font-size:1.3rem; margin-top:10px; color:#34495e;">누적 점수: <b>${totalScore.toFixed(1)}점</b></p>
-        </div>
-    `;
-            setTimeout(() => {
-                currentLevel++;
-                renderStageIntro();
-            }, 1500);
+            if (currentLevel === 23) {
+                // 게임 클리어
+                document.getElementById('app').innerHTML = `
+                    <div class="result-screen success">
+                        <h2 style="color:#f1c40f;">ALL CLEAR!</h2>
+                        <p style="font-size:1.2rem; margin-bottom: 20px;">모든 게임을 클리어했습니다 축하합니다.</p>
+                        <p style="font-size:1.5rem; font-weight:bold; color:#2c3e50;">최종 점수: ${totalScore.toFixed(1)}점</p>
+                        <div id="commentArea"></div>
+                        <button class="primary-btn" onclick="renderHome()">홈으로 돌아가기</button>
+                    </div>
+                `;
+                checkRankingAndShowCommentInput();
+            } else {
+                document.getElementById('app').innerHTML = `
+                    <div class="result-screen success">
+                        ${resultHtml}
+                    </div>
+                `;
+                setTimeout(() => {
+                    currentLevel++;
+                    renderStageIntro();
+                }, 1500);
+            }
         }
 
         function handleFail(reason) {
@@ -685,9 +778,9 @@
 
         function checkRankingAndShowCommentInput() {
             // 현재 점수가 TOP 10 안에 드는지 확인
-            const isTop10 = fullRankings.length < 10 || totalScore > fullRankings[9].score || 
-                           (totalScore === fullRankings[9].score && totalTime < fullRankings[9].totalTimeMs);
-            
+            const isTop10 = fullRankings.length < 10 || totalScore > fullRankings[9].score ||
+                (totalScore === fullRankings[9].score && totalTime < fullRankings[9].totalTimeMs);
+
             if (isTop10) {
                 document.getElementById('commentArea').innerHTML = `
                     <div class="comment-input-area">
