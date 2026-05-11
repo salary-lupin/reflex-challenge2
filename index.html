@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Reaction Challenge 2</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body {
+            background-color: #e0e5ec;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            color: #333;
+        }
+
+        #app {
+            background: #fff;
+            width: 90%;
+            max-width: 480px;
+            min-height: 600px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .bomb-btn {
+            background: #e74c3c !important;
+            color: #fff !important;
+            border-color: #c0392b !important;
+        }
+
+        .comment-input-area {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: left;
+        }
+
+        .primary-btn,
+        .secondary-btn {
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .primary-btn {
+            background: #3498db;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .primary-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .primary-btn:active {
+            transform: translateY(0);
+        }
+
+        .secondary-btn {
+            background: #ecf0f1;
+            color: #7f8c8d;
+        }
+
+        .secondary-btn:hover {
+            background: #bdc3c7;
+        }
+
+        .large-text {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 20px 0;
+            word-break: keep-all;
+        }
+
+        .sub-text {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .grid-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .opt-btn {
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid #ecf0f1;
+            border-radius: 12px;
+            background: #fff;
+            cursor: pointer;
+            transition: top var(--move-speed, 0.5s) ease-in-out, left var(--move-speed, 0.5s) ease-in-out, transform 0.1s;
+            color: #2c3e50;
+            word-break: keep-all;
+        }
+
+        .opt-btn:active {
+            background: #ecf0f1;
+            transform: scale(0.95);
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #95a5a6;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .ranking-board {
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: left;
+        }
+
+        .ranking-board h2,
+        .ranking-board h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .ranking-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .ranking-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ranking-list li:last-child {
+            border-bottom: none;
+        }
+
+        .rank-date {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .rank-time {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .example-box {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            color: #34495e;
+        }
+
+        .pulsate {
+            animation: pulsate 1s ease-in-out infinite alternate;
+            color: #e67e22;
+        }
+
+        @keyframes pulsate {
+            from {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            to {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        .result-screen.success h2 {
+            color: #2ecc71;
+            font-size: 2.5rem;
+        }
+
+        .result-screen.fail h2 {
+            color: #e74c3c;
+            font-size: 2.5rem;
+        }
+
+        .shape {
+            margin: 20px auto;
+            width: 120px;
+            height: 120px;
+        }
+
+        .shape.circle {
+            border-radius: 50%;
+        }
+
+        .shape.square {
+            border-radius: 12px;
+        }
+
+        .shape.triangle {
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+
+        .shape.diamond {
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+
+        .shape.pentagon {
+            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+        }
+
+        .shape.hexagon {
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+        }
+
+        .shape.star {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+
+        .shape.cross {
+            clip-path: polygon(33% 0%, 66% 0%, 66% 33%, 100% 33%, 100% 66%, 66% 66%, 66% 100%, 33% 100%, 33% 66%, 0% 66%, 0% 33%, 33% 33%);
+        }
+
+        .shape.message {
+            clip-path: polygon(0% 0%, 100% 0%, 100% 75%, 75% 75%, 75% 100%, 50% 75%, 0% 75%);
+        }
+
+        .shape.octagon {
+            clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app"></div>
+
+    <script src="./config.js"></script>
+    <script>
+        // 파이어베이스 초기화
+        let dbRef = null;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const database = firebase.database();
+            dbRef = database.ref('reactionChallenge2Rankings');
+        } catch (e) {
+            console.error("Firebase 초기화 에러:", e);
+        }
+
+        // 전역 상태 변수
+        let currentUsername = '익명';
+        let globalRankings = [];
+        let fullRankings = [];
+        let lastPlayedDate = null;
+        let gameState = 'home'; // home, intro, ready, playing, result, clear
+        let currentLevel = 1;
+        let totalScore = 0;
+        let totalTime = 0;
+        let stageStartTime = 0;
+        let readyTimer = null;
+        let currentQuestion = null; // level data
+        let moveInterval = null;
+
+        const timeLimitPerLevel = 30000; // 기본 레벨당 30초 (넉넉하게)
+
+        const colorsBase = [
+            { name: '빨간색', css: '#e74c3c' },
+            { name: '파란색', css: '#3498db' },
+            { name: '노란색', css: '#f39c12' },
+            { name: '초록색', css: '#2ecc71' },
+            { name: '보라색', css: '#9b59b6' },
+            { name: '주황색', css: '#e67e22' },
+            { name: '핑크색', css: '#e84393' },
+            { name: '청록색', css: '#1abc9c' },
+            { name: '갈색', css: '#8d6e63' },
+            { name: '검은색', css: '#2d3436' },
+            { name: '회색', css: '#95a5a6' },
+            { name: '연두색', css: '#badc58' }
+        ];
+
+        // 레벨 생성 로직
+        function generateLevel(level) {
+            let targetCount = 5;
+            let bombCount = 1;
+            let speedSetting = 1;
+            let teleport = false;
+            let isBonus = false;
+            let timeLimit = 0;
+            let pointPerClick = 0;
+
+            if (level === 1) { targetCount = 5; bombCount = 0; speedSetting = 1; }
+            else if (level === 2) { targetCount = 6; bombCount = 1; speedSetting = 1; }
+            else if (level === 3) { targetCount = 7; bombCount = 1; speedSetting = 1; }
+            else if (level === 4) { targetCount = 8; bombCount = 1; speedSetting = 1; }
+            else if (level === 5) { targetCount = 8; bombCount = 1; speedSetting = 2; }
+            else if (level === 6) { targetCount = 9; bombCount = 1; speedSetting = 2; }
+            else if (level === 7) { targetCount = 10; bombCount = 1; speedSetting = 2; }
+            else if (level === 8) { targetCount = 8; bombCount = 2; speedSetting = 2; }
+            else if (level === 9) { targetCount = 9; bombCount = 2; speedSetting = 2; }
+            else if (level === 10) { targetCount = 10; bombCount = 2; speedSetting = 2; }
+            else if (level === 11) { targetCount = 5; bombCount = 2; speedSetting = 2; teleport = true; }
+            else if (level === 12) { targetCount = 5; bombCount = 3; speedSetting = 2; teleport = true; }
+            else if (level === 13) { targetCount = 5; bombCount = 4; speedSetting = 2; teleport = true; }
+            else if (level === 14) {
+                // 보너스 스테이지 1
+                targetCount = 100; bombCount = 0; speedSetting = 0; teleport = true;
+                isBonus = true; timeLimit = 5000; pointPerClick = 2;
+            }
+            else if (level === 15) { targetCount = 5; bombCount = 5; speedSetting = 3; teleport = true; } // 사용자 14단계
+            else if (level === 16) { targetCount = 4; bombCount = 6; speedSetting = 3; teleport = true; } // 사용자 15단계
+            else if (level === 17) { targetCount = 3; bombCount = 7; speedSetting = 3; teleport = true; } // 사용자 16단계
+            else if (level === 18) { targetCount = 5; bombCount = 5; speedSetting = 3; } // 사용자 17단계
+            else if (level === 19) { targetCount = 4; bombCount = 6; speedSetting = 3; } // 사용자 18단계
+            else if (level === 20) { targetCount = 3; bombCount = 7; speedSetting = 3; } // 사용자 19단계
+            else if (level === 21) { targetCount = 2; bombCount = 8; speedSetting = 3; } // 사용자 20단계
+            else if (level === 22) {
+                // 보너스 스테이지 2
+                targetCount = 30; bombCount = 5; speedSetting = 1;
+                isBonus = true; timeLimit = 5000; pointPerClick = 3;
+            }
+            else if (level === 23) { targetCount = 5; bombCount = 15; speedSetting = 5; } // 사용자 21단계 (최종)
+            else {
+                targetCount = 5; bombCount = 20; speedSetting = 6;
+            }
+
+            const options = [];
+            for (let i = 0; i < targetCount; i++) {
+                options.push({ type: 'target', label: '클릭!' });
+            }
+            for (let i = 0; i < bombCount; i++) {
+                options.push({ type: 'bomb', label: '꽝' });
+            }
+
+            return {
+                options: options.sort(() => Math.random() - 0.5),
+                remainingTargets: targetCount,
+                speedSetting: speedSetting,
+                teleport: teleport,
+                isBonus: isBonus,
+                timeLimit: timeLimit,
+                pointPerClick: pointPerClick
+            };
+        }
+
+        // 유틸리티 함수들
+        function formatTime(ms) {
+            return (ms / 1000).toFixed(3) + '초';
+        }
+
+        function formatDate(date) {
+            const pad = n => n < 10 ? '0' + n : n;
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        }
+
+        // 파이어베이스 실시간 데이터 연동
+        if (dbRef) {
+            dbRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                let rankings = [];
+                if (data) {
+                    for (let key in data) {
+                        rankings.push(data[key]);
+                    }
+                }
+
+                // 점수가 높은 순으로 정렬 (내림차순), 점수가 같으면 시간 적은 순 (오름차순)
+                rankings.sort((a, b) => {
+                    if ((b.score || 0) !== (a.score || 0)) {
+                        return (b.score || 0) - (a.score || 0);
+                    }
+                    return (a.totalTimeMs || 0) - (b.totalTimeMs || 0);
+                });
+
+                fullRankings = rankings;
+                globalRankings = rankings.slice(0, 10);
+
+                if (gameState === 'home' || gameState === 'clear') {
+                    const board = document.getElementById('rankingBoardContent');
+                    if (board) board.innerHTML = getRankingsHtml();
+                }
+            });
+        }
+
+
+        function saveRanking(totalScore, finalLevel, totalTimeMs, comment = '') {
+            const newRecord = {
+                name: currentUsername,
+                date: formatDate(new Date()),
+                totalTimeMs: totalTimeMs,
+                level: finalLevel,
+                score: totalScore,
+                comment: comment || '코멘트 미작성'
+            };
+            lastPlayedDate = newRecord.date;
+
+            if (dbRef) {
+                dbRef.push(newRecord);
+            }
+        }
+
+        function getRankingsHtml() {
+            if (globalRankings.length === 0) {
+                return '<p style="text-align:center; color:#7f8c8d;">데이터베이스에 연결하여 랭킹을 불러오는 중이거나 기록이 없습니다.</p>';
+            }
+            let html = '<ol class="ranking-list" style="font-size:0.95rem;">';
+
+            let myRankIndex = -1;
+            if (lastPlayedDate) {
+                myRankIndex = fullRankings.findIndex(r => r.date === lastPlayedDate && r.name === currentUsername);
+            }
+
+            const renderRow = (r, idx, isLastPlayed) => {
+                const scoreStr = r.score !== undefined ? `${r.score}점` : '-';
+                const nameStr = r.name ? r.name : '익명';
+                const levelStr = r.level !== undefined ? `최종레벨: ${r.level}` : '';
+                const commentStr = r.comment ? r.comment : '코멘트 미작성';
+                const highlightStyle = isLastPlayed ? 'background-color: #e8f4fd; border: 2px solid #3498db; border-radius: 8px; padding: 10px; margin-top: 5px; margin-bottom: 5px;' : '';
+
+                return `<li style="display:flex; flex-direction:column; ${highlightStyle}">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span class="rank-date" style="color:#2c3e50; font-weight:bold;">${idx + 1}. [${nameStr}] <span style="font-weight:normal;">${formatTime(r.totalTimeMs)}</span></span>
+                <span style="font-weight:bold; color:#2980b9;">${scoreStr}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom: 5px;">
+                <span style="color:#7f8c8d;">${levelStr}</span>
+                <span class="rank-time" style="color:#95a5a6;">${r.date}</span>
+            </div>
+            <div style="font-size:0.8rem; color:#636e72; border-top: 1px dashed #ddd; padding-top: 5px;">
+                💬 ${commentStr}
+            </div>
+        </li>`;
+            };
+
+            globalRankings.forEach((r, idx) => {
+                const isLastPlayed = (myRankIndex === idx);
+                html += renderRow(r, idx, isLastPlayed);
+            });
+
+            if (myRankIndex >= 10) {
+                html += `<li style="text-align:center; padding: 10px 0; color:#7f8c8d; justify-content:center; border-bottom:none;">...</li>`;
+                html += renderRow(fullRankings[myRankIndex], myRankIndex, true);
+            }
+
+            html += '</ol>';
+            return html;
+        }
+
+        // 화면 렌더링 및 게임 제어 흐름
+        function renderHome() {
+            gameState = 'home';
+            document.getElementById('app').innerHTML = `
+        <div class="home-screen">
+            <h1 style="color:#2c3e50;">Reaction Challenge 2</h1>
+            <p>빠르고 정확하게 순발력 미니게임을 통과하세요!</p>
+            
+            <div style="margin: 20px 0; padding: 15px; border-radius: 8px; text-align: left; border: 1px solid #ddd;">
+                <h3 style="margin-top:0; text-align:center; color:#2c3e50;">플레이어 이름</h3>
+                <input type="text" id="usernameInput" placeholder="이름을 입력하세요 (예: 홍길동)" style="padding:10px; width:100%; box-sizing:border-box; font-size:1rem; border:1px solid #ccc; border-radius:5px;" maxlength="10">
+            </div>
+
+            <div style="margin: 20px 0; background: #fff5f5; padding: 20px; border-radius: 12px; text-align: left; border: 1px solid #ffcfcf;">
+                <h3 style="margin-top:0; text-align:center; color:#e74c3c;">게임 설명</h3>
+                <p style="font-weight: bold; margin-bottom: 10px;">• 레벨이 시작되면 모든 클릭 버튼을 클릭해서 없앤다.</p>
+                <p style="font-weight: bold; margin-bottom: 10px; color: #c0392b;">• 단, 꽝 버튼을 클릭하면 게임이 종료되므로 주의!</p>
+                <p style="font-style: italic; text-align: center; margin-top: 15px;">"과연 당신은 어디까지 갈 수 있을까?"</p>
+            </div>
+            <button class="primary-btn" onclick="startGame()">게임 시작하기</button>
+            <div class="ranking-board">
+                <h2>🌍 글로벌 TOP 10 랭킹</h2>
+                <div id="rankingBoardContent">
+                    ${getRankingsHtml()}
+                </div>
+            </div>
+        </div>
+    `;
+
+            // 이전에 입력했던 이름이 있으면 유지
+            const nameInput = document.getElementById('usernameInput');
+            if (nameInput && currentUsername !== '익명') {
+                nameInput.value = currentUsername;
+            }
+        }
+
+        function shuffleGames() {
+            gameSequence = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('usernameInput');
+            if (nameInput) {
+                currentUsername = nameInput.value.trim() || '익명';
+            }
+
+            currentLevel = 1;
+            totalScore = 0;
+            totalTime = 0;
+            renderStageIntro();
+        }
+
+        function renderStageIntro() {
+            gameState = 'intro';
+            let introTitle = `Level ${currentLevel}`;
+            let introText = "준비되셨나요?";
+            let subDesc = `모든 <b>클릭!</b> 버튼을 빠르게 누르세요.<br><b>꽝</b> 버튼을 누르면 즉시 종료됩니다!`;
+
+            if (currentLevel === 5) introText = "이제 몸 다 풀리셨나요?";
+            else if (currentLevel === 8) introText = "아직 할만한가요?";
+            else if (currentLevel === 11) introText = "여기까지 오다니 대단하군요! 안되겠어요.";
+            else if (currentLevel === 14) {
+                introTitle = "BONUS STAGE 1";
+                introText = "5초동안 최대한 많은 클릭을 없애세요!";
+                subDesc = "클릭 1개당 <b>20점</b> (움직이지 않음)";
+            }
+            else if (currentLevel === 15) introText = "잘 쉬셨죠? 다시 갑니다.";
+            else if (currentLevel === 18) introText = "이제 저도 못참습니다!";
+            else if (currentLevel === 22) {
+                introTitle = "BONUS STAGE 2";
+                introText = "5초동안 최대한 많은 클릭을 없애세요!";
+                subDesc = "클릭 1개당 <b>30점</b> (느리게 움직임)";
+            }
+            else if (currentLevel === 23) introText = "이제 최종장입니다! 이걸 클리어하면 인정하죠!";
+
+            document.getElementById('app').innerHTML = `
+        <div class="intro-screen">
+            <h2 style="font-size: 2.5rem; color: #2c3e50;">${introTitle}</h2>
+            <p style="color:#7f8c8d; font-size: 1.2rem;">${introText}</p>
+            <div class="example-box">
+                ${subDesc}
+            </div>
+            <button class="primary-btn ready-btn" onclick="prepareStage(event)">시작하기</button>
+        </div>
+    `;
+        }
+
+        function prepareStage(e) {
+            if (e) e.stopPropagation();
+            gameState = 'preparing';
+            document.getElementById('app').innerHTML = `
+        <div class="ready-screen">
+            <h2 class="pulsate" style="font-size:3rem; margin-top:50px;">준비...</h2>
+        </div>
+    `;
+            setTimeout(() => {
+                gameState = 'ready'; // 이 상태에서 화면 클릭 시 '미리 클릭'으로 실패 처리됨
+                const delay = Math.floor(Math.random() * 1500) + 1000; // 1~2.5초 대기
+                readyTimer = setTimeout(() => {
+                    if (gameState === 'ready') {
+                        startStage();
+                    }
+                }, delay);
+            }, 50);
+        }
+
+        function renderQuestion() {
+            const q = currentQuestion;
+            let html = `
+        <div class="header-info">
+            <span class="stage-info">Level ${currentLevel}</span>
+            <span class="time-info">누적 점수: ${totalScore.toFixed(1)}</span>
+        </div>
+        <div class="sub-text" style="margin-bottom:10px;">남은 버튼: <b id="remainingCount">${q.remainingTargets}</b></div>
+        <div class="random-area" style="position:relative; width:100%; height:400px; background:#f1f3f5; border-radius:12px; overflow:hidden;">
+    `;
+
+            q.options.forEach((opt, idx) => {
+                const top = Math.random() * 85;
+                const left = Math.random() * 85;
+                const isBomb = opt.type === 'bomb';
+                const className = isBomb ? 'opt-btn bomb-btn' : 'opt-btn';
+                const teleportStyle = q.teleport ? 'transition: none;' : '';
+                // 보너스 스테이지 1은 버튼 크기를 줄여서 많이 배치 가능하게 함
+                const bonusStyle = (currentLevel === 14) ? 'padding: 5px 8px; font-size: 0.7rem;' : '';
+                html += `<button id="btn-${idx}" class="${className}" style="position:absolute; top:${top}%; left:${left}%; padding:10px 15px; font-size:1rem; white-space:nowrap; z-index:10; ${teleportStyle} ${bonusStyle}" onmousedown="handleAnswer(${idx}, event, this)">${opt.label}</button>`;
+            });
+
+            html += `</div>`;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function startStage() {
+            gameState = 'playing';
+            currentQuestion = generateLevel(currentLevel);
+            renderQuestion();
+            stageStartTime = performance.now();
+
+            // 버튼 움직임 시작
+            if (moveInterval) clearInterval(moveInterval);
+
+            // Speed 1: 1000ms, Speed 2: 500ms, Speed 3: 300ms, Speed 5: 150ms
+            const speed = currentQuestion.speedSetting === 2 ? 500 :
+                currentQuestion.speedSetting === 3 ? 300 :
+                    currentQuestion.speedSetting === 5 ? 150 : 1000;
+
+            // 이동 속도에 맞춰 CSS 트랜지션 시간 조정 (이동 시간의 70% 정도로 설정하여 부드럽게)
+            const moveArea = document.querySelector('.random-area');
+            if (moveArea) {
+                moveArea.style.setProperty('--move-speed', (speed * 0.7) / 1000 + 's');
+            }
+
+            moveInterval = setInterval(moveButtons, speed);
+
+            // 보너스 스테이지 시간 제한
+            if (currentQuestion.isBonus) {
+                setTimeout(() => {
+                    if (gameState === 'playing') {
+                        handleSuccess(currentQuestion.timeLimit);
+                    }
+                }, currentQuestion.timeLimit);
+            }
+        }
+
+        function moveButtons() {
+            if (gameState !== 'playing') {
+                if (moveInterval) clearInterval(moveInterval);
+                return;
+            }
+            const q = currentQuestion;
+            q.options.forEach((opt, idx) => {
+                const btn = document.getElementById(`btn-${idx}`);
+                if (btn && btn.style.visibility !== 'hidden') {
+                    const top = Math.random() * 85;
+                    const left = Math.random() * 85;
+                    btn.style.top = top + '%';
+                    btn.style.left = left + '%';
+                }
+            });
+        }
+
+        // 정답 처리 로직
+        function handleAnswer(idx, e, btn) {
+            if (e) e.stopPropagation();
+            if (gameState !== 'playing') return;
+
+            const q = currentQuestion;
+            const opt = q.options[idx];
+
+            if (opt.type === 'bomb') {
+                handleFail('꽝 버튼 클릭');
+                return;
+            }
+
+            // 타겟 버튼 처리
+            btn.style.visibility = 'hidden';
+
+            if (q.isBonus) {
+                // 보너스 스테이지는 즉시 점수 추가
+                totalScore += q.pointPerClick;
+                // 남은 개수 표시는 줄여줌 (장식용)
+                q.remainingTargets--;
+                const counter = document.getElementById('remainingCount');
+                if (counter) counter.innerText = q.remainingTargets;
+            } else {
+                q.remainingTargets--;
+                document.getElementById('remainingCount').innerText = q.remainingTargets;
+
+                if (q.remainingTargets === 0) {
+                    const timeTaken = performance.now() - stageStartTime;
+                    handleSuccess(timeTaken);
+                }
+            }
+        }
+
+        function handleTimeout() {
+            if (gameState !== 'playing') return;
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+            handleFail('시간 초과');
+        }
+
+        // 결과 처리
+        function handleSuccess(timeTaken) {
+            gameState = 'result';
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+
+            const q = currentQuestion;
+            let resultHtml = "";
+
+            if (q.isBonus) {
+                const clickedCount = q.options.filter(o => o.type === 'target').length - q.remainingTargets;
+                resultHtml = `
+                    <h2>보너스 스테이지 종료!</h2>
+                    <p style="font-size:1.2rem;">클릭 개수: <b>${clickedCount}개</b></p>
+                    <p style="font-size:1.5rem; font-weight:bold; color:#f1c40f;">+${(clickedCount * q.pointPerClick).toFixed(1)}점</p>
+                    <p style="font-size:1.3rem; margin-top:10px; color:#34495e;">누적 점수: <b>${totalScore.toFixed(1)}점</b></p>
+                `;
+            } else {
+                totalTime += timeTaken;
+                let bonus = 0.5;
+                const seconds = timeTaken / 1000;
+                if (seconds < 3) bonus = 2;
+                else if (seconds < 5) bonus = 1.5;
+                else if (seconds < 10) bonus = 1;
+                else bonus = 0.5;
+
+                const stageScore = q.options.filter(o => o.type === 'target').length * bonus;
+                totalScore += stageScore;
+
+                resultHtml = `
+                    <h2>Level ${currentLevel} 클리어!</h2>
+                    <p style="font-size:1.2rem;">소요 시간: <b>${formatTime(timeTaken)}</b></p>
+                    <p style="font-size:1.2rem;">보너스: <b>x${bonus}</b></p>
+                    <p style="font-size:1.5rem; font-weight:bold; color:#27ae60;">+${stageScore.toFixed(1)}점</p>
+                    <p style="font-size:1.3rem; margin-top:10px; color:#34495e;">누적 점수: <b>${totalScore.toFixed(1)}점</b></p>
+                `;
+            }
+
+            if (currentLevel === 23) {
+                // 게임 클리어
+                document.getElementById('app').innerHTML = `
+                    <div class="result-screen success">
+                        <h2 style="color:#f1c40f;">ALL CLEAR!</h2>
+                        <p style="font-size:1.2rem; margin-bottom: 20px;">모든 게임을 클리어했습니다 축하합니다.</p>
+                        <p style="font-size:1.5rem; font-weight:bold; color:#2c3e50;">최종 점수: ${totalScore.toFixed(1)}점</p>
+                        <div id="commentArea"></div>
+                        <button class="primary-btn" onclick="renderHome()">홈으로 돌아가기</button>
+                    </div>
+                `;
+                checkRankingAndShowCommentInput();
+            } else {
+                document.getElementById('app').innerHTML = `
+                    <div class="result-screen success">
+                        ${resultHtml}
+                    </div>
+                `;
+                setTimeout(() => {
+                    currentLevel++;
+                    renderStageIntro();
+                }, 1500);
+            }
+        }
+
+        function handleFail(reason) {
+            gameState = 'result';
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+            document.getElementById('app').innerHTML = `
+        <div class="result-screen fail">
+            <h2 style="font-size: 3rem;">게임 종료</h2>
+            <p style="font-size:1.2rem; margin-bottom: 10px;">이유: <b>${reason}</b></p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#e74c3c;">최종 레벨: ${currentLevel}</p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#2c3e50;">최종 점수: ${totalScore.toFixed(1)}점</p>
+            
+            <div id="commentArea"></div>
+
+            <button class="primary-btn" onclick="startGame()">다시하기</button>
+            <button class="secondary-btn" onclick="renderHome()">홈으로 돌아가기</button>
+        </div>
+    `;
+            checkRankingAndShowCommentInput();
+        }
+
+        function checkRankingAndShowCommentInput() {
+            // 현재 점수가 TOP 10 안에 드는지 확인
+            const isTop10 = fullRankings.length < 10 || totalScore > fullRankings[9].score ||
+                (totalScore === fullRankings[9].score && totalTime < fullRankings[9].totalTimeMs);
+
+            if (isTop10) {
+                document.getElementById('commentArea').innerHTML = `
+                    <div class="comment-input-area">
+                        <p style="font-weight:bold; color:#2980b9; margin-bottom:10px;">축하합니다! TOP 10에 진입했습니다.</p>
+                        <p style="font-size:0.9rem; color:#7f8c8d; margin-bottom:5px;">코멘트를 남겨주세요 (최대 25자)</p>
+                        <input type="text" id="commentInput" placeholder="코멘트 입력" maxlength="25" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; margin-bottom:10px;">
+                        <button class="primary-btn" style="width:100%; margin:0;" onclick="submitScoreWithComment()">점수 등록하기</button>
+                    </div>
+                `;
+            }
+        }
+
+        function submitScoreWithComment() {
+            const comment = document.getElementById('commentInput').value.trim();
+            saveRanking(parseFloat(totalScore.toFixed(1)), currentLevel, totalTime, comment);
+            alert('랭킹이 등록되었습니다!');
+            renderHome();
+        }
+
+        // 앱 초기화 및 미리 클릭(Pre-click) 방지 전역 이벤트
+        function init() {
+            // 캡처링 단계에서 마우스다운을 잡아내어, 'ready'(준비...) 상태일 때 클릭하면 실패 처리
+            document.addEventListener('mousedown', (e) => {
+                if (gameState === 'ready') {
+                    clearTimeout(readyTimer);
+                    gameState = 'fail';
+                    handleFail('미리 클릭');
+                }
+            }, true);
+
+            renderHome();
+        }
+
+        // 실행
+        init();
+
+    </script>
+</body>
+
+</html>
