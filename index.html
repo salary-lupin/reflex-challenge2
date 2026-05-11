@@ -7,7 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Reaction 10 Challenge 2</title>
+    <title>Reaction Challenge 2</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -37,7 +37,21 @@
             justify-content: center;
             text-align: center;
             position: relative;
-            overflow: hidden;
+            overflow-y: auto;
+        }
+
+        .bomb-btn {
+            background: #e74c3c !important;
+            color: #fff !important;
+            border-color: #c0392b !important;
+        }
+
+        .comment-input-area {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: left;
         }
 
         .primary-btn,
@@ -260,7 +274,7 @@
         try {
             firebase.initializeApp(firebaseConfig);
             const database = firebase.database();
-            dbRef = database.ref('reaction10Rankings');
+            dbRef = database.ref('reactionChallenge2Rankings');
         } catch (e) {
             console.error("Firebase 초기화 에러:", e);
         }
@@ -271,18 +285,14 @@
         let fullRankings = [];
         let lastPlayedDate = null;
         let gameState = 'home'; // home, intro, ready, playing, result, clear
-        let currentStageIndex = 0;
-        let gameSequence = [];
-        let accumulatedTime = 0;
+        let currentLevel = 1;
+        let totalScore = 0;
+        let totalTime = 0;
         let stageStartTime = 0;
-        let stageTimer = null;
         let readyTimer = null;
-        let currentQuestion = null;
-        let moveInterval = null;
+        let currentQuestion = null; // level data
 
-        let currentDifficulty = 'extreme';
-        let timeLimit = 2000;
-        let baseScore = 105;
+        const timeLimitPerLevel = 30000; // 기본 레벨당 30초 (넉넉하게)
 
         const colorsBase = [
             { name: '빨간색', css: '#e74c3c' },
@@ -299,300 +309,24 @@
             { name: '연두색', css: '#badc58' }
         ];
 
-        // 10가지 미니게임 정의
-        const games = [
-            {
-                id: 'antonym',
-                title: '반대말 클릭 게임',
-                description: '화면에 제시된 단어와 반대되는 뜻을 가진 단어를 고르세요.',
-                example: '크다 -> [작다] 클릭 / hot -> [cold] 클릭',
-                createQuestion: () => {
-                    const antonyms = [
-                        { q: '크다', a: '작다', f: ['길다', '높다', '빠르다', '넓다', '무겁다'] },
-                        { q: '뜨겁다', a: '차갑다', f: ['시원하다', '미지근하다', '따뜻하다', '얼다', '덥다'] },
-                        { q: '길다', a: '짧다', f: ['작다', '낮다', '좁다', '느리다', '얇다'] },
-                        { q: '높다', a: '낮다', f: ['작다', '짧다', '깊다', '적다', '평평하다'] },
-                        { q: '빠르다', a: '느리다', f: ['늦다', '멈추다', '기다리다', '가만히', '천천히'] },
-                        { q: '많다', a: '적다', f: ['작다', '조금', '없다', '부족하다', '비다'] },
-                        { q: '밝다', a: '어둡다', f: ['흐리다', '검다', '밤', '까맣다', '깜깜하다'] },
-                        { q: '가볍다', a: '무겁다', f: ['크다', '강하다', '단단하다', '어렵다', '뚱뚱하다'] },
-                        { q: 'hot', a: 'cold', f: ['warm', 'cool', 'ice', 'freeze', 'snow'] },
-                        { q: 'fast', a: 'slow', f: ['stop', 'wait', 'late', 'walk', 'stay'] },
-                        { q: 'big', a: 'small', f: ['short', 'low', 'tiny', 'little', 'mini'] },
-                        { q: 'good', a: 'bad', f: ['evil', 'wrong', 'sad', 'hate', 'terrible'] }
-                    ];
-                    const pair = antonyms[Math.floor(Math.random() * antonyms.length)];
-                    const opts = new Set([pair.a]);
-                    const targetSize = currentDifficulty === 'extreme' ? 6 : 4;
-                    while (opts.size < targetSize) {
-                        opts.add(pair.f[Math.floor(Math.random() * pair.f.length)]);
-                    }
-                    return {
-                        content: `<div class="sub-text">반대말을 고르세요!</div><div class="large-text" style="color:#2c3e50;">${pair.q}</div>`,
-                        options: Array.from(opts).sort(() => Math.random() - 0.5),
-                        answer: pair.a,
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'textColor',
-                title: '글자 색 맞추기 게임',
-                description: '텍스트 내용이 아닌, 실제 글자가 칠해진 색상을 누르세요.',
-                example: '파란색으로 칠해진 "빨간색" 글자 -> [파란색] 클릭',
-                createQuestion: () => {
-                    const textObj = colorsBase[Math.floor(Math.random() * colorsBase.length)];
-                    const colorObj = colorsBase[Math.floor(Math.random() * colorsBase.length)];
-                    const answer = colorObj.name;
-                    const opts = new Set([answer, textObj.name]);
-                    const targetSize = currentDifficulty === 'extreme' ? 6 : 4;
-                    while (opts.size < targetSize) {
-                        opts.add(colorsBase[Math.floor(Math.random() * colorsBase.length)].name);
-                    }
-                    return {
-                        content: `<div class="large-text" style="color: ${colorObj.css}; font-weight:900;">${textObj.name}</div>`,
-                        options: Array.from(opts).sort(() => Math.random() - 0.5),
-                        answer: answer,
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'shape',
-                title: '도형 색상 맞추기 게임',
-                description: '화면에 나타난 도형의 색상을 맞히세요.',
-                example: '초록색 원 -> [초록색] 클릭',
-                createQuestion: () => {
-                    const shapes = ['circle', 'square', 'triangle', 'diamond', 'pentagon', 'hexagon', 'star', 'cross', 'message', 'octagon'];
-                    const shape = shapes[Math.floor(Math.random() * shapes.length)];
-                    const targetColor = colorsBase[Math.floor(Math.random() * colorsBase.length)];
-
-                    const opts = new Set([targetColor.name]);
-                    const targetSize = currentDifficulty === 'extreme' ? 6 : 4;
-                    while (opts.size < targetSize) {
-                        opts.add(colorsBase[Math.floor(Math.random() * colorsBase.length)].name);
-                    }
-                    return {
-                        content: `<div class="shape ${shape}" style="background-color: ${targetColor.css}"></div>`,
-                        options: Array.from(opts).sort(() => Math.random() - 0.5),
-                        answer: targetColor.name,
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'numberCondition',
-                title: '숫자 반응 게임',
-                description: '주어진 숫자가 조건에 맞는지 YES 또는 NO를 고르세요.',
-                example: '숫자: 4, 조건: "짝수인가?" -> [YES] 클릭',
-                createQuestion: () => {
-                    const num = Math.floor(Math.random() * 30) + 1; // 1~30
-                    const conditions = [
-                        { t: '홀수인가?', c: n => n % 2 !== 0 },
-                        { t: '짝수인가?', c: n => n % 2 === 0 },
-                        { t: '5보다 큰가?', c: n => n > 5 },
-                        { t: '10의 배수인가?', c: n => n % 10 === 0 },
-                        { t: '3의 배수인가?', c: n => n % 3 === 0 },
-                        { t: '소수(Prime)인가?', c: n => [2, 3, 5, 7, 11, 13, 17, 19, 23, 29].includes(n) },
-                        { t: '한 자리 수인가?', c: n => n < 10 },
-                        { t: '4의 배수인가?', c: n => n % 4 === 0 },
-                        { t: '15 이상인가?', c: n => n >= 15 },
-                        { t: '7의 배수인가?', c: n => n % 7 === 0 }
-                    ];
-                    const cond = conditions[Math.floor(Math.random() * conditions.length)];
-                    return {
-                        content: `<div class="large-text">${num}</div><div class="sub-text">${cond.t}</div>`,
-                        options: ['YES', 'NO'].sort(() => Math.random() - 0.5),
-                        answer: cond.c(num) ? 'YES' : 'NO',
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'direction',
-                title: '방향 반응 게임',
-                description: '화면의 표시와 반대되는 형태(문자/기호)로 정답을 고르세요.',
-                example: '문제: "←" -> [왼쪽] 클릭 / 문제: "왼쪽" -> [←] 클릭',
-                createQuestion: () => {
-                    const allDirs = ['위', '아래', '왼쪽', '오른쪽', '왼쪽 위', '오른쪽 위', '왼쪽 아래', '오른쪽 아래'];
-                    const arrows = { '위': '↑', '아래': '↓', '왼쪽': '←', '오른쪽': '→', '왼쪽 위': '↖', '오른쪽 위': '↗', '왼쪽 아래': '↙', '오른쪽 아래': '↘' };
-                    const isArrow = Math.random() > 0.5;
-                    const target = allDirs[Math.floor(Math.random() * allDirs.length)];
-
-                    const display = isArrow ? arrows[target] : target;
-                    const conditionText = isArrow ? '방향에 맞는 문자를 고르세요' : '문자에 맞는 화살표를 고르세요';
-
-                    // 정답을 포함해 무작위로 선택
-                    const opts = new Set([target]);
-                    const targetSize = currentDifficulty === 'extreme' ? 6 : 4;
-                    while (opts.size < targetSize) {
-                        opts.add(allDirs[Math.floor(Math.random() * allDirs.length)]);
-                    }
-
-                    const optionsArray = isArrow ? Array.from(opts) : Array.from(opts).map(d => arrows[d]);
-                    const answer = isArrow ? target : arrows[target];
-
-                    return {
-                        content: `<div class="large-text">${display}</div><div class="sub-text">${conditionText}</div>`,
-                        options: optionsArray.sort(() => Math.random() - 0.5),
-                        answer: answer,
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'randomClick',
-                title: '랜덤 위치 클릭 게임',
-                description: '화면의 무작위 위치에 나타나는 정답 버튼을 빠르게 누르세요.',
-                example: '"클릭!" 버튼 누르기 (가짜 버튼 주의)',
-                createQuestion: () => {
-                    const targets = ['클릭!', '정답', '여기에요', '눌러주세요', '터치!', '이거야!'];
-                    const fakes = ['누르지마', '기다려', '가만히', '함정', '가짜', '속았지', '아니야', 'X'];
-                    const answerText = targets[Math.floor(Math.random() * targets.length)];
-
-                    const opts = new Set([answerText]);
-                    while (opts.size < 4) {
-                        opts.add(fakes[Math.floor(Math.random() * fakes.length)]);
-                    }
-
-                    return {
-                        content: `<div class="sub-text">정답 버튼을 찾아서 클릭하세요! (목표: <b style="color:#e74c3c;">${answerText}</b>)</div>`,
-                        options: Array.from(opts).sort(() => Math.random() - 0.5),
-                        answer: answerText,
-                        type: 'random_position'
-                    };
-                }
-            },
-            {
-                id: 'wordCategory',
-                title: '단어 분류 게임',
-                description: '단어가 속하는 카테고리를 고르세요.',
-                example: '사과 -> [과일] 클릭',
-                createQuestion: () => {
-                    const cats = {
-                        '과일': ['사과', '바나나', '포도', '딸기', '오렌지', '수박', '복숭아', '망고'],
-                        '동물': ['강아지', '고양이', '호랑이', '토끼', '사자', '원숭이', '코끼리', '기린'],
-                        '색상': ['빨강', '파랑', '노랑', '초록', '보라', '검정', '하양', '주황'],
-                        '숫자': ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟'],
-                        '직업': ['경찰', '소방관', '의사', '교사', '요리사', '판사', '가수', '배우'],
-                        '국가': ['한국', '미국', '일본', '중국', '영국', '프랑스', '독일', '호주'],
-                        '운동': ['축구', '야구', '농구', '배구', '테니스', '수영', '골프', '탁구'],
-                        '악기': ['피아노', '기타', '바이올린', '드럼', '플루트', '첼로', '트럼펫', '하프'],
-                        '음식': ['비빔밥', '김치찌개', '짜장면', '햄버거', '피자', '초밥', '파스타', '떡볶이'],
-                        '교통수단': ['버스', '지하철', '택시', '비행기', '기차', '자동차', '자전거', '오토바이']
-                    };
-                    const catKeys = Object.keys(cats);
-                    const targetCat = catKeys[Math.floor(Math.random() * catKeys.length)];
-                    const word = cats[targetCat][Math.floor(Math.random() * cats[targetCat].length)];
-
-                    const opts = new Set([targetCat]);
-                    const targetSize = currentDifficulty === 'extreme' ? 6 : 4;
-                    while (opts.size < targetSize) {
-                        opts.add(catKeys[Math.floor(Math.random() * catKeys.length)]);
-                    }
-
-                    return {
-                        content: `<div class="large-text">${word}</div>`,
-                        options: Array.from(opts).sort(() => Math.random() - 0.5),
-                        answer: targetCat,
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'math',
-                title: '계산 순발력 게임',
-                description: '수식의 올바른 정답을 고르세요.',
-                example: '3 + 5 -> [8] 클릭',
-                createQuestion: () => {
-                    const ops = ['+', '-', '*', '÷'];
-                    const op = ops[Math.floor(Math.random() * ops.length)];
-                    let a, b, ans;
-                    if (op === '+') { a = Math.floor(Math.random() * 20) + 1; b = Math.floor(Math.random() * 20) + 1; ans = a + b; }
-                    else if (op === '-') { a = Math.floor(Math.random() * 20) + 10; b = Math.floor(Math.random() * 20) + 1; ans = a - b; }
-                    else if (op === '*') { a = Math.floor(Math.random() * 8) + 2; b = Math.floor(Math.random() * 8) + 2; ans = a * b; }
-                    else if (op === '÷') { b = Math.floor(Math.random() * 9) + 2; ans = Math.floor(Math.random() * 9) + 2; a = b * ans; }
-
-                    const opts = new Set([ans.toString()]);
-                    const targetSize = currentDifficulty === 'extreme' ? 6 : 4;
-                    while (opts.size < targetSize) {
-                        let fake = ans + Math.floor(Math.random() * 9) - 4;
-                        if (fake !== ans && fake >= 0) opts.add(fake.toString());
-                    }
-                    return {
-                        content: `<div class="large-text">${a} ${op} ${b}</div>`,
-                        options: Array.from(opts).sort(() => Math.random() - 0.5),
-                        answer: ans.toString(),
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'fakeButton',
-                title: '가짜 버튼 피하기 게임',
-                description: '목표 단어와 정확히 일치하는 버튼을 누르세요.',
-                example: '목표: 빨간색 -> [빨강색](X), [빨간색](O)',
-                createQuestion: () => {
-                    const targets = [
-                        { w: '빨간색', f: ['빨강색', '빨간 색', '붉은색', '뻘건색', '빨간색깔'] },
-                        { w: '강아지', f: ['강야지', '멍멍이', '강아 지', '걍아지', '강이지'] },
-                        { w: '바나나', f: ['빠나나', '바나 나', '버너너', '바나냐', '비나나'] },
-                        { w: '경찰청장', f: ['경철창장', '경찰창장', '검찰청장', '경찰청정', '경철청장'] },
-                        { w: '안녕', f: ['안녕히', '안녕 하', '인녕', '안냥', '얍녕'] },
-                        { w: '스마트폰', f: ['스마투폰', '스마트 폰', '수마트폰', '스마튼폰', '스미트폰'] },
-                        { w: '아이스크림', f: ['아이스끄림', '아아스크림', '아이스 크림', '아이수크림', '아이스크람'] },
-                        { w: '다람쥐', f: ['다람쥐이', '다람지', '타람쥐', '다람주', '다램쥐'] },
-                        { w: '해바라기', f: ['해바래기', '하바라기', '해 바라기', '혜바라기', '해바리기'] },
-                        { w: '지하철역', f: ['지화철역', '지하철 역', '치하철역', '지하칠역', '지하철역사'] }
-                    ];
-                    const t = targets[Math.floor(Math.random() * targets.length)];
-                    const fakes = [...t.f].sort(() => Math.random() - 0.5).slice(0, currentDifficulty === 'extreme' ? 5 : 3);
-                    return {
-                        content: `<div class="sub-text">정확히 일치하는 단어를 찾으세요</div><div class="large-text" style="color:#2c3e50;">${t.w}</div>`,
-                        options: [t.w, ...fakes].sort(() => Math.random() - 0.5),
-                        answer: t.w,
-                        type: 'button'
-                    };
-                }
-            },
-            {
-                id: 'sequence',
-                title: '순서대로 클릭 게임',
-                description: '제시된 4개의 버튼을 올바른 순서대로 모두 클릭하세요.',
-                example: '1 -> 2 -> 3 -> 4',
-                createQuestion: () => {
-                    const seqList = currentDifficulty === 'extreme' ? [
-                        ['1', '2', '3', '4', '5'],
-                        ['A', 'B', 'C', 'D', 'E'],
-                        ['가', '나', '다', '라', '마'],
-                        ['월', '화', '수', '목', '금'],
-                        ['도', '레', '미', '파', '솔'],
-                        ['일', '이', '삼', '사', '오'],
-                        ['첫째', '둘째', '셋째', '넷째', '다섯째'],
-                        ['10', '20', '30', '40', '50']
-                    ] : [
-                        ['1', '2', '3', '4'],
-                        ['A', 'B', 'C', 'D'],
-                        ['가', '나', '다', '라'],
-                        ['아침', '점심', '저녁', '밤'],
-                        ['봄', '여름', '가을', '겨울'],
-                        ['월', '화', '수', '목'],
-                        ['일', '이', '삼', '사'],
-                        ['도', '레', '미', '파'],
-                        ['첫째', '둘째', '셋째', '넷째'],
-                        ['10', '20', '30', '40']
-                    ];
-                    const targetSeq = seqList[Math.floor(Math.random() * seqList.length)];
-                    return {
-                        content: `<div class="sub-text">알맞은 순서대로 ${targetSeq.length}개를 모두 누르세요!</div>`,
-                        options: [...targetSeq].sort(() => Math.random() - 0.5),
-                        answer: targetSeq,
-                        type: 'sequence',
-                        seqIndex: 0
-                    };
-                }
+        // 레벨 생성 로직
+        function generateLevel(level) {
+            const targetCount = 3 + Math.floor(level / 2); // 레벨당 버튼 수 증가
+            const bombCount = Math.min(Math.floor(level / 3), 10); // 레벨당 꽝 버튼 추가 (최대 10개)
+            
+            const options = [];
+            for (let i = 0; i < targetCount; i++) {
+                options.push({ type: 'target', label: '클릭!' });
             }
-        ];
+            for (let i = 0; i < bombCount; i++) {
+                options.push({ type: 'bomb', label: '꽝' });
+            }
+            
+            return {
+                options: options.sort(() => Math.random() - 0.5),
+                remainingTargets: targetCount
+            };
+        }
 
         // 유틸리티 함수들
         function formatTime(ms) {
@@ -614,8 +348,15 @@
                         rankings.push(data[key]);
                     }
                 }
-                // 점수가 높은 순으로 정렬 (내림차순)
-                rankings.sort((a, b) => (b.score || 0) - (a.score || 0));
+                
+                // 점수가 높은 순으로 정렬 (내림차순), 점수가 같으면 시간 적은 순 (오름차순)
+                rankings.sort((a, b) => {
+                    if ((b.score || 0) !== (a.score || 0)) {
+                        return (b.score || 0) - (a.score || 0);
+                    }
+                    return (a.totalTimeMs || 0) - (b.totalTimeMs || 0);
+                });
+
                 fullRankings = rankings;
                 globalRankings = rankings.slice(0, 10);
 
@@ -626,16 +367,15 @@
             });
         }
 
-        function saveRanking(totalTimeMs) {
-            const timeInSeconds = totalTimeMs / 1000;
-            const score = parseFloat((baseScore - timeInSeconds).toFixed(3));
 
+        function saveRanking(totalScore, finalLevel, totalTimeMs, comment = '') {
             const newRecord = {
                 name: currentUsername,
                 date: formatDate(new Date()),
                 totalTimeMs: totalTimeMs,
-                difficulty: currentDifficulty,
-                score: score
+                level: finalLevel,
+                score: totalScore,
+                comment: comment || '코멘트 미작성'
             };
             lastPlayedDate = newRecord.date;
 
@@ -656,9 +396,10 @@
             }
 
             const renderRow = (r, idx, isLastPlayed) => {
-                const diffStr = r.difficulty === 'extreme' ? '최상' : (r.difficulty === 'high' ? '상' : (r.difficulty === 'medium' ? '중' : (r.difficulty === 'low' ? '하' : '기본')));
                 const scoreStr = r.score !== undefined ? `${r.score}점` : '-';
                 const nameStr = r.name ? r.name : '익명';
+                const levelStr = r.level !== undefined ? `최종레벨: ${r.level}` : '';
+                const commentStr = r.comment ? r.comment : '코멘트 미작성';
                 const highlightStyle = isLastPlayed ? 'background-color: #e8f4fd; border: 2px solid #3498db; border-radius: 8px; padding: 10px; margin-top: 5px; margin-bottom: 5px;' : '';
 
                 return `<li style="display:flex; flex-direction:column; ${highlightStyle}">
@@ -666,9 +407,12 @@
                 <span class="rank-date" style="color:#2c3e50; font-weight:bold;">${idx + 1}. [${nameStr}] <span style="font-weight:normal;">${formatTime(r.totalTimeMs)}</span></span>
                 <span style="font-weight:bold; color:#2980b9;">${scoreStr}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-                <span style="color:#7f8c8d;">난이도: ${diffStr}</span>
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom: 5px;">
+                <span style="color:#7f8c8d;">${levelStr}</span>
                 <span class="rank-time" style="color:#95a5a6;">${r.date}</span>
+            </div>
+            <div style="font-size:0.8rem; color:#636e72; border-top: 1px dashed #ddd; padding-top: 5px;">
+                💬 ${commentStr}
             </div>
         </li>`;
             };
@@ -692,21 +436,19 @@
             gameState = 'home';
             document.getElementById('app').innerHTML = `
         <div class="home-screen">
-            <h1 style="color:#2c3e50;">Reaction 10 Challenge 2</h1>
-            <p>10개의 순발력 미니게임을 통과하세요!</p>
+            <h1 style="color:#2c3e50;">Reaction Challenge 2</h1>
+            <p>빠르고 정확하게 순발력 미니게임을 통과하세요!</p>
             
             <div style="margin: 20px 0; padding: 15px; border-radius: 8px; text-align: left; border: 1px solid #ddd;">
                 <h3 style="margin-top:0; text-align:center; color:#2c3e50;">플레이어 이름</h3>
                 <input type="text" id="usernameInput" placeholder="이름을 입력하세요 (예: 홍길동)" style="padding:10px; width:100%; box-sizing:border-box; font-size:1rem; border:1px solid #ccc; border-radius:5px;" maxlength="10">
             </div>
 
-            <div style="margin: 20px 0; background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: left;">
-                <h3 style="margin-top:0; text-align:center;">난이도 설정</h3>
-                <label style="display:block; margin-bottom:10px;"><input type="radio" name="difficulty" value="extreme" ${currentDifficulty === 'extreme' ? 'checked' : ''}> 최상 (제한시간 2초, 6지선다/무빙버튼, 기본점수 105점)</label>
-                <label style="display:block; margin-bottom:10px;"><input type="radio" name="difficulty" value="high" ${currentDifficulty === 'high' ? 'checked' : ''}> 상 (제한시간 2초, 기본점수 100점)</label>
-                <label style="display:block; margin-bottom:10px;"><input type="radio" name="difficulty" value="medium" ${currentDifficulty === 'medium' ? 'checked' : ''}> 중 (제한시간 4초, 기본점수 95점)</label>
-                <label style="display:block;"><input type="radio" name="difficulty" value="low" ${currentDifficulty === 'low' ? 'checked' : ''}> 하 (제한시간 6초, 기본점수 90점)</label>
-                <p style="font-size:0.8rem; color:#7f8c8d; text-align:center; margin-bottom:0; margin-top:10px;">최종 점수 = 기본점수 - 걸린시간(초)</p>
+            <div style="margin: 20px 0; background: #fff5f5; padding: 20px; border-radius: 12px; text-align: left; border: 1px solid #ffcfcf;">
+                <h3 style="margin-top:0; text-align:center; color:#e74c3c;">게임 설명</h3>
+                <p style="font-weight: bold; margin-bottom: 10px;">• 레벨이 시작되면 모든 클릭 버튼을 클릭해서 없앤다.</p>
+                <p style="font-weight: bold; margin-bottom: 10px; color: #c0392b;">• 단, 꽝 버튼을 클릭하면 게임이 종료되므로 주의!</p>
+                <p style="font-style: italic; text-align: center; margin-top: 15px;">"과연 당신은 어디까지 갈 수 있을까?"</p>
             </div>
             <button class="primary-btn" onclick="startGame()">게임 시작하기</button>
             <div class="ranking-board">
@@ -732,47 +474,26 @@
         function startGame() {
             const nameInput = document.getElementById('usernameInput');
             if (nameInput) {
-                if (nameInput.value.trim() !== '') {
-                    currentUsername = nameInput.value.trim();
-                } else {
-                    currentUsername = '익명';
-                }
+                currentUsername = nameInput.value.trim() || '익명';
             }
 
-            const diffInputs = document.getElementsByName('difficulty');
-            for (const input of diffInputs) {
-                if (input.checked) {
-                    currentDifficulty = input.value;
-                    break;
-                }
-            }
-
-            if (currentDifficulty === 'extreme') { timeLimit = 2000; baseScore = 105; }
-            else if (currentDifficulty === 'high') { timeLimit = 2000; baseScore = 100; }
-            else if (currentDifficulty === 'medium') { timeLimit = 4000; baseScore = 95; }
-            else { timeLimit = 6000; baseScore = 90; }
-
-            shuffleGames();
-            currentStageIndex = 0;
-            accumulatedTime = 0;
+            currentLevel = 1;
+            totalScore = 0;
+            totalTime = 0;
             renderStageIntro();
         }
 
         function renderStageIntro() {
             gameState = 'intro';
-            const game = games[gameSequence[currentStageIndex]];
-
-            if (game.setup) game.setup();
-
             document.getElementById('app').innerHTML = `
         <div class="intro-screen">
-            <div class="header-info">
-                <span>Stage ${currentStageIndex + 1} / 10</span>
+            <h2 style="font-size: 2.5rem; color: #2c3e50;">Level ${currentLevel}</h2>
+            <p style="color:#7f8c8d; font-size: 1.2rem;">준비되셨나요?</p>
+            <div class="example-box">
+                모든 <b>클릭!</b> 버튼을 빠르게 누르세요.<br>
+                <b>꽝</b> 버튼을 누르면 즉시 종료됩니다!
             </div>
-            <h2>${game.title}</h2>
-            <p style="color:#7f8c8d;">${game.description}</p>
-            <div class="example-box">${game.example}</div>
-            <button class="primary-btn ready-btn" onclick="prepareStage(event)">준비 완료</button>
+            <button class="primary-btn ready-btn" onclick="prepareStage(event)">시작하기</button>
         </div>
     `;
         }
@@ -798,85 +519,32 @@
 
         function renderQuestion() {
             const q = currentQuestion;
-            if (moveInterval) {
-                clearInterval(moveInterval);
-                moveInterval = null;
-            }
-
-            const game = games[gameSequence[currentStageIndex]];
-            const isMovingGame = currentDifficulty === 'extreme' && (game.id === 'numberCondition' || game.id === 'randomClick');
-
             let html = `
         <div class="header-info">
-            <span class="stage-info">Stage ${currentStageIndex + 1} / 10</span>
-            <span class="time-info">누적: ${formatTime(accumulatedTime)}</span>
+            <span class="stage-info">Level ${currentLevel}</span>
+            <span class="time-info">누적 점수: ${totalScore.toFixed(1)}</span>
         </div>
-        <div class="question-container">
-            ${q.content}
-        </div>
+        <div class="sub-text" style="margin-bottom:10px;">남은 버튼: <b id="remainingCount">${q.remainingTargets}</b></div>
+        <div class="random-area" style="position:relative; width:100%; height:400px; background:#f1f3f5; border-radius:12px; overflow:hidden;">
     `;
 
-            if (q.type === 'random_position' || isMovingGame) {
-                html += `<div class="random-area" style="position:relative; width:100%; height:250px; margin-top:20px;">`;
-                // 구역을 4개로 나누어 겹치지 않게 배치
-                const zones = [
-                    { tMin: 0, tMax: 30, lMin: 0, lMax: 35 },
-                    { tMin: 0, tMax: 30, lMin: 45, lMax: 70 },
-                    { tMin: 50, tMax: 80, lMin: 0, lMax: 35 },
-                    { tMin: 50, tMax: 80, lMin: 45, lMax: 70 }
-                ].sort(() => Math.random() - 0.5);
+            q.options.forEach((opt, idx) => {
+                const top = Math.random() * 85;
+                const left = Math.random() * 85;
+                const isBomb = opt.type === 'bomb';
+                const className = isBomb ? 'opt-btn bomb-btn' : 'opt-btn';
+                html += `<button id="btn-${idx}" class="${className}" style="position:absolute; top:${top}%; left:${left}%; padding:10px 15px; font-size:1rem; white-space:nowrap; z-index:10;" onmousedown="handleAnswer(${idx}, event, this)">${opt.label}</button>`;
+            });
 
-                q.options.forEach((opt, idx) => {
-                    const z = zones[idx % zones.length];
-                    const top = Math.floor(Math.random() * (z.tMax - z.tMin + 1)) + z.tMin;
-                    const left = Math.floor(Math.random() * (z.lMax - z.lMin + 1)) + z.lMin;
-                    const transitionStyle = isMovingGame ? 'transition: top 0.7s, left 0.7s;' : '';
-                    html += `<button id="btn-${idx}" class="opt-btn moving-btn" style="position:absolute; top:${top}%; left:${left}%; padding:10px 15px; font-size:1rem; white-space:nowrap; ${transitionStyle}" onmousedown="handleAnswer(${idx}, event, this)">${opt}</button>`;
-                });
-                html += `</div>`;
-            } else {
-                html += `<div class="grid-options">`;
-                q.options.forEach((opt, idx) => {
-                    // onmousedown 이벤트를 사용하여 최대한 빠른 반응속도 캐치
-                    html += `<button id="btn-${idx}" class="opt-btn" onmousedown="handleAnswer(${idx}, event, this)">${opt}</button>`;
-                });
-                html += `</div>`;
-            }
-
+            html += `</div>`;
             document.getElementById('app').innerHTML = html;
         }
 
         function startStage() {
             gameState = 'playing';
-            const game = games[gameSequence[currentStageIndex]];
-            currentQuestion = game.createQuestion();
-
+            currentQuestion = generateLevel(currentLevel);
             renderQuestion();
-
             stageStartTime = performance.now();
-            // 설정된 난이도별 제한 시간 적용
-            stageTimer = setTimeout(handleTimeout, timeLimit);
-
-            const isMovingGame = currentDifficulty === 'extreme' && (game.id === 'numberCondition' || game.id === 'randomClick');
-            if (isMovingGame) {
-                moveInterval = setInterval(() => {
-                    const buttons = document.querySelectorAll('.moving-btn');
-                    const zones = [
-                        { tMin: 0, tMax: 30, lMin: 0, lMax: 35 },
-                        { tMin: 0, tMax: 30, lMin: 45, lMax: 70 },
-                        { tMin: 50, tMax: 80, lMin: 0, lMax: 35 },
-                        { tMin: 50, tMax: 80, lMin: 45, lMax: 70 }
-                    ].sort(() => Math.random() - 0.5);
-
-                    buttons.forEach((btn, idx) => {
-                        const z = zones[idx % zones.length];
-                        const top = Math.floor(Math.random() * (z.tMax - z.tMin + 1)) + z.tMin;
-                        const left = Math.floor(Math.random() * (z.lMax - z.lMin + 1)) + z.lMin;
-                        btn.style.top = top + '%';
-                        btn.style.left = left + '%';
-                    });
-                }, 700);
-            }
         }
 
         // 정답 처리 로직
@@ -884,35 +552,22 @@
             if (e) e.stopPropagation();
             if (gameState !== 'playing') return;
 
-            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
-
             const q = currentQuestion;
-            const value = q.options[idx];
-            const timeTaken = performance.now() - stageStartTime;
+            const opt = q.options[idx];
 
-            // 순서대로 클릭 게임 처리
-            if (q.type === 'sequence') {
-                if (value === q.answer[q.seqIndex]) {
-                    q.seqIndex++;
-                    btn.style.visibility = 'hidden';
-                    // 모두 다 누른 경우 성공
-                    if (q.seqIndex === q.answer.length) {
-                        clearTimeout(stageTimer);
-                        handleSuccess(timeTaken);
-                    }
-                } else {
-                    clearTimeout(stageTimer);
-                    handleFail('순서 오류');
-                }
+            if (opt.type === 'bomb') {
+                handleFail('꽝 버튼 클릭');
                 return;
             }
 
-            // 일반 버튼 및 랜덤 위치 버튼 게임 처리
-            clearTimeout(stageTimer);
-            if (value === q.answer) {
+            // 타겟 버튼 처리
+            btn.style.visibility = 'hidden';
+            q.remainingTargets--;
+            document.getElementById('remainingCount').innerText = q.remainingTargets;
+
+            if (q.remainingTargets === 0) {
+                const timeTaken = performance.now() - stageStartTime;
                 handleSuccess(timeTaken);
-            } else {
-                handleFail('오답 선택');
             }
         }
 
@@ -925,53 +580,72 @@
         // 결과 처리
         function handleSuccess(timeTaken) {
             gameState = 'result';
-            accumulatedTime += timeTaken;
+            totalTime += timeTaken;
+            
+            // 점수 계산 로직
+            let bonus = 0.5;
+            const seconds = timeTaken / 1000;
+            if (seconds < 10) bonus = 2;
+            else if (seconds < 15) bonus = 1.5;
+            else if (seconds < 20) bonus = 1;
+            
+            const stageScore = currentQuestion.options.filter(o => o.type === 'target').length * bonus;
+            totalScore += stageScore;
+
             document.getElementById('app').innerHTML = `
         <div class="result-screen success">
-            <h2>성공!</h2>
-            <p style="font-size:1.5rem; font-weight:bold;">${formatTime(timeTaken)}</p>
+            <h2>Level ${currentLevel} 클리어!</h2>
+            <p style="font-size:1.2rem;">소요 시간: <b>${formatTime(timeTaken)}</b></p>
+            <p style="font-size:1.2rem;">보너스: <b>x${bonus}</b></p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#27ae60;">+${stageScore.toFixed(1)}점</p>
         </div>
     `;
             setTimeout(() => {
-                currentStageIndex++;
-                if (currentStageIndex >= 10) {
-                    finishGame(true);
-                } else {
-                    renderStageIntro();
-                }
-            }, 1000);
+                currentLevel++;
+                renderStageIntro();
+            }, 1500);
         }
 
         function handleFail(reason) {
             gameState = 'result';
             document.getElementById('app').innerHTML = `
         <div class="result-screen fail">
-            <h2>실패!</h2>
-            <p style="font-size:1.2rem; margin-bottom: 30px;">이유: <b>${reason}</b></p>
+            <h2 style="font-size: 3rem;">게임 종료</h2>
+            <p style="font-size:1.2rem; margin-bottom: 10px;">이유: <b>${reason}</b></p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#e74c3c;">최종 레벨: ${currentLevel}</p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#2c3e50;">최종 점수: ${totalScore.toFixed(1)}점</p>
+            
+            <div id="commentArea"></div>
+
             <button class="primary-btn" onclick="startGame()">다시하기</button>
             <button class="secondary-btn" onclick="renderHome()">홈으로 돌아가기</button>
         </div>
     `;
+            checkRankingAndShowCommentInput();
         }
 
-        function finishGame(isClear) {
-            gameState = 'clear';
-            let html = '';
-            if (isClear) {
-                saveRanking(accumulatedTime); // 10개 성공 시 랭킹 저장
-                html += `
-            <h2 style="color:#3498db; font-size:2.5rem;">게임 클리어!</h2>
-            <p style="font-size:1.3rem; font-weight:bold;">총 걸린 시간: ${formatTime(accumulatedTime)}</p>
-            <div class="ranking-board">
-                <h3>TOP 10 랭킹</h3>
-                <div id="rankingBoardContent">
-                    ${getRankingsHtml()}
-                </div>
-            </div>
-            <button class="primary-btn" style="margin-top:20px;" onclick="renderHome()">홈으로 돌아가기</button>
-        `;
+        function checkRankingAndShowCommentInput() {
+            // 현재 점수가 TOP 10 안에 드는지 확인
+            const isTop10 = fullRankings.length < 10 || totalScore > fullRankings[9].score || 
+                           (totalScore === fullRankings[9].score && totalTime < fullRankings[9].totalTimeMs);
+            
+            if (isTop10) {
+                document.getElementById('commentArea').innerHTML = `
+                    <div class="comment-input-area">
+                        <p style="font-weight:bold; color:#2980b9; margin-bottom:10px;">축하합니다! TOP 10에 진입했습니다.</p>
+                        <p style="font-size:0.9rem; color:#7f8c8d; margin-bottom:5px;">코멘트를 남겨주세요 (최대 25자)</p>
+                        <input type="text" id="commentInput" placeholder="코멘트 입력" maxlength="25" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; margin-bottom:10px;">
+                        <button class="primary-btn" style="width:100%; margin:0;" onclick="submitScoreWithComment()">점수 등록하기</button>
+                    </div>
+                `;
             }
-            document.getElementById('app').innerHTML = html;
+        }
+
+        function submitScoreWithComment() {
+            const comment = document.getElementById('commentInput').value.trim();
+            saveRanking(parseFloat(totalScore.toFixed(1)), currentLevel, totalTime, comment);
+            alert('랭킹이 등록되었습니다!');
+            renderHome();
         }
 
         // 앱 초기화 및 미리 클릭(Pre-click) 방지 전역 이벤트
