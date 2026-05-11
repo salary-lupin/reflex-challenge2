@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Reaction Challenge 2 [TEST MODE]</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body {
+            background-color: #e0e5ec;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            color: #333;
+        }
+
+        #app {
+            background: #fff;
+            width: 90%;
+            max-width: 480px;
+            min-height: 600px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .bomb-btn {
+            background: #e74c3c !important;
+            color: #fff !important;
+            border-color: #c0392b !important;
+        }
+
+        .comment-input-area {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: left;
+        }
+
+        .primary-btn,
+        .secondary-btn {
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .primary-btn {
+            background: #3498db;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .primary-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .primary-btn:active {
+            transform: translateY(0);
+        }
+
+        .secondary-btn {
+            background: #ecf0f1;
+            color: #7f8c8d;
+        }
+
+        .secondary-btn:hover {
+            background: #bdc3c7;
+        }
+
+        .large-text {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 20px 0;
+            word-break: keep-all;
+        }
+
+        .sub-text {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .grid-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .opt-btn {
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid #ecf0f1;
+            border-radius: 12px;
+            background: #fff;
+            cursor: pointer;
+            transition: top 0.5s ease-in-out, left 0.5s ease-in-out, transform 0.1s;
+            color: #2c3e50;
+            word-break: keep-all;
+        }
+
+        .opt-btn:active {
+            background: #ecf0f1;
+            transform: scale(0.95);
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #95a5a6;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .ranking-board {
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: left;
+        }
+
+        .ranking-board h2,
+        .ranking-board h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .ranking-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .ranking-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ranking-list li:last-child {
+            border-bottom: none;
+        }
+
+        .rank-date {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .rank-time {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .example-box {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            color: #34495e;
+        }
+
+        .pulsate {
+            animation: pulsate 1s ease-in-out infinite alternate;
+            color: #e67e22;
+        }
+
+        @keyframes pulsate {
+            from {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            to {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        .result-screen.success h2 {
+            color: #2ecc71;
+            font-size: 2.5rem;
+        }
+
+        .result-screen.fail h2 {
+            color: #e74c3c;
+            font-size: 2.5rem;
+        }
+
+        .test-badge {
+            background: #f1c40f;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app"></div>
+
+    <script src="./config.js"></script>
+    <script>
+        // 파이어베이스 초기화 (테스트용이므로 랭킹 저장은 원하면 주석 처리 가능)
+        let dbRef = null;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const database = firebase.database();
+            dbRef = database.ref('reactionChallenge2Rankings');
+        } catch (e) {
+            console.error("Firebase 초기화 에러:", e);
+        }
+
+        // 전역 상태 변수
+        let currentUsername = '테스터';
+        let globalRankings = [];
+        let fullRankings = [];
+        let lastPlayedDate = null;
+        let gameState = 'home'; 
+        let currentLevel = 1;
+        let totalScore = 0;
+        let totalTime = 0;
+        let stageStartTime = 0;
+        let readyTimer = null;
+        let currentQuestion = null; 
+        let moveInterval = null;
+
+        // 레벨 생성 로직
+        function generateLevel(level) {
+            let targetCount = 5;
+            let bombCount = 1;
+            let speedSetting = 1;
+            let teleport = false;
+
+            if (level === 1) { targetCount = 5; bombCount = 0; speedSetting = 1; }
+            else if (level === 2) { targetCount = 6; bombCount = 1; speedSetting = 1; }
+            else if (level === 3) { targetCount = 7; bombCount = 1; speedSetting = 1; }
+            else if (level === 4) { targetCount = 8; bombCount = 1; speedSetting = 1; }
+            else if (level === 5) { targetCount = 8; bombCount = 1; speedSetting = 2; }
+            else if (level === 6) { targetCount = 9; bombCount = 1; speedSetting = 2; }
+            else if (level === 7) { targetCount = 10; bombCount = 1; speedSetting = 2; }
+            else if (level === 8) { targetCount = 8; bombCount = 2; speedSetting = 2; }
+            else if (level === 9) { targetCount = 9; bombCount = 2; speedSetting = 2; }
+            else if (level === 10) { targetCount = 10; bombCount = 2; speedSetting = 2; }
+            else if (level === 11) { targetCount = 5; bombCount = 2; speedSetting = 2; teleport = true; }
+            else if (level === 12) { targetCount = 6; bombCount = 2; speedSetting = 2; teleport = true; }
+            else if (level === 13) { targetCount = 7; bombCount = 2; speedSetting = 2; teleport = true; }
+            else {
+                targetCount = 7 + (level - 13);
+                bombCount = 3;
+                speedSetting = 2;
+                teleport = true;
+            }
+            
+            const options = [];
+            for (let i = 0; i < targetCount; i++) {
+                options.push({ type: 'target', label: '클릭!' });
+            }
+            for (let i = 0; i < bombCount; i++) {
+                options.push({ type: 'bomb', label: '꽝' });
+            }
+            
+            return {
+                options: options.sort(() => Math.random() - 0.5),
+                remainingTargets: targetCount,
+                speedSetting: speedSetting,
+                teleport: teleport
+            };
+        }
+
+        // 유틸리티 함수들
+        function formatTime(ms) {
+            return (ms / 1000).toFixed(3) + '초';
+        }
+
+        function formatDate(date) {
+            const pad = n => n < 10 ? '0' + n : n;
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        }
+
+        // 파이어베이스 실시간 데이터 연동
+        if (dbRef) {
+            dbRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                let rankings = [];
+                if (data) {
+                    for (let key in data) {
+                        rankings.push(data[key]);
+                    }
+                }
+                rankings.sort((a, b) => {
+                    if ((b.score || 0) !== (a.score || 0)) {
+                        return (b.score || 0) - (a.score || 0);
+                    }
+                    return (a.totalTimeMs || 0) - (b.totalTimeMs || 0);
+                });
+                fullRankings = rankings;
+                globalRankings = rankings.slice(0, 10);
+            });
+        }
+
+        function saveRanking(totalScore, finalLevel, totalTimeMs, comment = '') {
+            const newRecord = {
+                name: currentUsername + ' [TEST]',
+                date: formatDate(new Date()),
+                totalTimeMs: totalTimeMs,
+                level: finalLevel,
+                score: totalScore,
+                comment: comment || '테스트 모드 기록'
+            };
+            if (dbRef) dbRef.push(newRecord);
+        }
+
+        // 화면 렌더링 및 게임 제어 흐름
+        function renderHome() {
+            gameState = 'home';
+            document.getElementById('app').innerHTML = `
+        <div class="home-screen">
+            <div class="test-badge">DEBUG TEST MODE</div>
+            <h1 style="color:#2c3e50;">Reaction Challenge 2</h1>
+            <p>특정 레벨 난이도를 테스트해보세요.</p>
+            
+            <div style="margin: 20px 0; padding: 20px; border-radius: 12px; text-align: left; border: 2px solid #f1c40f; background: #fffdf0;">
+                <h3 style="margin-top:0; color:#d35400;">테스트 설정</h3>
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">시작할 레벨 (1-99):</label>
+                <input type="number" id="testLevelInput" value="${currentLevel}" min="1" max="99" style="padding:10px; width:100%; box-sizing:border-box; font-size:1.2rem; border:1px solid #ccc; border-radius:5px; margin-bottom:15px;">
+                
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">플레이어 이름:</label>
+                <input type="text" id="usernameInput" value="${currentUsername}" style="padding:10px; width:100%; box-sizing:border-box; font-size:1rem; border:1px solid #ccc; border-radius:5px;">
+            </div>
+
+            <button class="primary-btn" style="background:#f39c12;" onclick="startGame()">테스트 시작하기</button>
+            <p style="font-size:0.85rem; color:#7f8c8d; margin-top:10px;">* 테스트 모드 기록은 이름 뒤에 [TEST]가 붙어 저장됩니다.</p>
+        </div>
+    `;
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('usernameInput');
+            const levelInput = document.getElementById('testLevelInput');
+            
+            if (nameInput) currentUsername = nameInput.value.trim() || '테스터';
+            if (levelInput) currentLevel = parseInt(levelInput.value) || 1;
+
+            totalScore = 0;
+            totalTime = 0;
+            renderStageIntro();
+        }
+
+        function renderStageIntro() {
+            gameState = 'intro';
+            let introText = "준비되셨나요?";
+            if (currentLevel === 5) introText = "이제 몸 다 풀리셨나요?";
+            else if (currentLevel === 8) introText = "아직 할만한가요?";
+            else if (currentLevel === 11) introText = "여기까지 오다니 대단하군요! 안되겠어요.";
+
+            document.getElementById('app').innerHTML = `
+        <div class="intro-screen">
+            <h2 style="font-size: 2.5rem; color: #2c3e50;">Level ${currentLevel}</h2>
+            <p style="color:#7f8c8d; font-size: 1.2rem;">${introText}</p>
+            <div class="example-box">
+                [테스트 모드]<br>
+                현재 레벨 설정을 확인합니다.
+            </div>
+            <button class="primary-btn ready-btn" onclick="prepareStage(event)">시작하기</button>
+            <button class="secondary-btn" onclick="renderHome()" style="width:100%; margin-top:10px;">메인으로</button>
+        </div>
+    `;
+        }
+
+        function prepareStage(e) {
+            if (e) e.stopPropagation();
+            gameState = 'preparing';
+            document.getElementById('app').innerHTML = `
+        <div class="ready-screen">
+            <h2 class="pulsate" style="font-size:3rem; margin-top:50px;">준비...</h2>
+        </div>
+    `;
+            setTimeout(() => {
+                gameState = 'ready';
+                const delay = Math.floor(Math.random() * 1500) + 1000;
+                readyTimer = setTimeout(() => {
+                    if (gameState === 'ready') startStage();
+                }, delay);
+            }, 50);
+        }
+
+        function renderQuestion() {
+            const q = currentQuestion;
+            let html = `
+        <div class="header-info">
+            <span class="stage-info">Level ${currentLevel} [TEST]</span>
+            <span class="time-info">점수: ${totalScore.toFixed(1)}</span>
+        </div>
+        <div class="sub-text" style="margin-bottom:10px;">남은 버튼: <b id="remainingCount">${q.remainingTargets}</b></div>
+        <div class="random-area" style="position:relative; width:100%; height:400px; background:#f1f3f5; border-radius:12px; overflow:hidden;">
+    `;
+            q.options.forEach((opt, idx) => {
+                const top = Math.random() * 85;
+                const left = Math.random() * 85;
+                const isBomb = opt.type === 'bomb';
+                const className = isBomb ? 'opt-btn bomb-btn' : 'opt-btn';
+                const teleportStyle = q.teleport ? 'transition: none;' : '';
+                html += `<button id="btn-${idx}" class="${className}" style="position:absolute; top:${top}%; left:${left}%; padding:10px 15px; font-size:1rem; white-space:nowrap; z-index:10; ${teleportStyle}" onmousedown="handleAnswer(${idx}, event, this)">${opt.label}</button>`;
+            });
+            html += `</div>`;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function startStage() {
+            gameState = 'playing';
+            currentQuestion = generateLevel(currentLevel);
+            renderQuestion();
+            stageStartTime = performance.now();
+            if (moveInterval) clearInterval(moveInterval);
+            const speed = currentQuestion.speedSetting === 1 ? 1000 : 500;
+            moveInterval = setInterval(moveButtons, speed);
+        }
+
+        function moveButtons() {
+            if (gameState !== 'playing') {
+                if (moveInterval) clearInterval(moveInterval);
+                return;
+            }
+            const q = currentQuestion;
+            q.options.forEach((opt, idx) => {
+                const btn = document.getElementById(`btn-${idx}`);
+                if (btn && btn.style.visibility !== 'hidden') {
+                    const top = Math.random() * 85;
+                    const left = Math.random() * 85;
+                    btn.style.top = top + '%';
+                    btn.style.left = left + '%';
+                }
+            });
+        }
+
+        function handleAnswer(idx, e, btn) {
+            if (e) e.stopPropagation();
+            if (gameState !== 'playing') return;
+            const q = currentQuestion;
+            const opt = q.options[idx];
+            if (opt.type === 'bomb') {
+                handleFail('꽝 버튼 클릭');
+                return;
+            }
+            btn.style.visibility = 'hidden';
+            q.remainingTargets--;
+            document.getElementById('remainingCount').innerText = q.remainingTargets;
+            if (q.remainingTargets === 0) {
+                const timeTaken = performance.now() - stageStartTime;
+                handleSuccess(timeTaken);
+            }
+        }
+
+        function handleSuccess(timeTaken) {
+            gameState = 'result';
+            totalTime += timeTaken;
+            let bonus = 0.5;
+            const seconds = timeTaken / 1000;
+            if (seconds < 3) bonus = 2;
+            else if (seconds < 5) bonus = 1.5;
+            else if (seconds < 10) bonus = 1;
+            else bonus = 0.5;
+            const stageScore = currentQuestion.options.filter(o => o.type === 'target').length * bonus;
+            totalScore += stageScore;
+
+            document.getElementById('app').innerHTML = `
+        <div class="result-screen success">
+            <h2>Level ${currentLevel} 클리어!</h2>
+            <p style="font-size:1.2rem;">소요 시간: <b>${formatTime(timeTaken)}</b></p>
+            <p style="font-size:1.2rem;">보너스: <b>x${bonus}</b></p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#27ae60;">+${stageScore.toFixed(1)}점</p>
+            <p style="font-size:1.3rem; margin-top:10px; color:#34495e;">누적 점수: <b>${totalScore.toFixed(1)}점</b></p>
+            <button class="primary-btn" onclick="currentLevel++; renderStageIntro();">다음 레벨 테스트</button>
+            <button class="secondary-btn" onclick="renderHome()">종료</button>
+        </div>
+    `;
+        }
+
+        function handleFail(reason) {
+            gameState = 'result';
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+            document.getElementById('app').innerHTML = `
+        <div class="result-screen fail">
+            <h2 style="font-size: 3rem;">게임 종료</h2>
+            <p style="font-size:1.2rem; margin-bottom: 10px;">이유: <b>${reason}</b></p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#e74c3c;">최종 레벨: ${currentLevel}</p>
+            <p style="font-size:1.5rem; font-weight:bold; color:#2c3e50;">최종 점수: ${totalScore.toFixed(1)}점</p>
+            <button class="primary-btn" onclick="startGame()">다시 시도</button>
+            <button class="secondary-btn" onclick="renderHome()">메인으로</button>
+        </div>
+    `;
+        }
+
+        function init() {
+            document.addEventListener('mousedown', (e) => {
+                if (gameState === 'ready') {
+                    clearTimeout(readyTimer);
+                    gameState = 'fail';
+                    handleFail('미리 클릭');
+                }
+            }, true);
+            renderHome();
+        }
+
+        init();
+    </script>
+</body>
+</html>
